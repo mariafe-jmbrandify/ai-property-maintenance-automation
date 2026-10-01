@@ -25,9 +25,10 @@ Values below are defaults from [`config/business_rules.yaml`](../config/business
 | # | Rule | Default |
 |---|------|---------|
 | PR-1 | Internal cost = assessment fee cost + labor + materials | — |
-| PR-2 | Client price = internal cost × (1 + markup) | 35% markup |
+| PR-2 | Client price = internal cost ÷ (1 − target margin). Internal cost is 50% of the price, gross profit is the other 50%. | 50% margin (= 100% markup, price = 2 × cost) |
 | PR-3 | Client prices round **up** to the nearest increment | $5 |
 | PR-4 | Only the client price is shown to the PM company | — |
+| PR-5 | Margin is measured on the price, markup on the cost. Always quote and report **margin**: 50% margin = 100% markup; 35% markup = 26% margin. | — |
 
 ## 4. Budget decision (NTE)
 
@@ -47,7 +48,7 @@ See [ADR-002](decisions/ADR-002-assessment-fee-credit.md).
 | # | Rule |
 |---|------|
 | FEE-1 | If the repair is approved, the assessment fee is credited: it is not billed separately. |
-| FEE-2 | If the estimate is declined, only the assessment fee is invoiced ($75 default). |
+| FEE-2 | If the estimate is declined, only the assessment fee is invoiced: $150 default ($75 visit cost at a 50% margin). |
 | FEE-3 | Client estimates carry the disclaimer: *"If this estimate is approved and the repair is authorized, the assessment fee will be credited toward the total repair cost and will not be billed separately. If the estimate is declined, only the assessment fee will be invoiced."* |
 
 ## 6. Follow-ups and timers

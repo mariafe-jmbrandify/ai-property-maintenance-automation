@@ -3,13 +3,16 @@
 # implementation read the same values, so change them here, not in a scenario.
 
 pricing:
-  # Markup applied to the total internal cost to produce the client unit price.
-  markup_pct: 35
+  # Pricing is set by GROSS MARGIN: the share of the client price the company keeps.
+  #   client_price = internal_cost / (1 - target_margin_pct/100)
+  # 50% margin -> internal cost is 50% of the price -> price = 2 x cost (a 100% markup).
+  # Note: margin and markup are different numbers. A 35% markup is only a 26% margin.
+  target_margin_pct: 50
   # Client prices are rounded UP to the nearest multiple of this amount.
   round_up_to: 5
   assessment_fee:
     internal_cost: 75   # what the visit costs the company (technician pay)
-    client_price: 75    # what the PM company is billed if the repair is declined
+    client_price: 150   # billed when the repair is declined; 75 / (1 - 0.50) keeps the 50% margin
   # waive  -> on approval the fee is not billed separately (it is already inside the repair price)
   # deduct -> the fee was billed up front, so it is subtracted from the repair invoice
   assessment_credit_mode: waive

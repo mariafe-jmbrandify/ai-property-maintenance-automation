@@ -9,10 +9,10 @@ from maintenance_ops.kpis import average_hours, callback_rate, first_visit_resol
 SAMPLE = Path(__file__).resolve().parents[1] / "data" / "samples" / "sample_ai_extraction.json"
 
 ORDERS = [
-    {"pm_company_name": "ABC", "repair_completed_at": 1, "first_visit_resolution": True, "invoice_total": 325, "internal_cost_total": 240,
+    {"pm_company_name": "ABC", "repair_completed_at": 1, "first_visit_resolution": True, "invoice_total": 480, "internal_cost_total": 240,
      "approval_requested_at": datetime(2026, 7, 5, 9), "approval_received_at": datetime(2026, 7, 6, 9)},
-    {"pm_company_name": "ABC", "repair_completed_at": 1, "first_visit_resolution": False, "callback_required": True, "invoice_total": 220, "internal_cost_total": 160},
-    {"pm_company_name": "XYZ", "repair_completed_at": 1, "first_visit_resolution": True, "invoice_total": 100, "internal_cost_total": 70},
+    {"pm_company_name": "ABC", "repair_completed_at": 1, "first_visit_resolution": False, "callback_required": True, "invoice_total": 320, "internal_cost_total": 160},
+    {"pm_company_name": "XYZ", "repair_completed_at": 1, "first_visit_resolution": True, "invoice_total": 140, "internal_cost_total": 70},
     {"pm_company_name": "XYZ"},
 ]
 
@@ -22,8 +22,8 @@ def test_kpis():
     assert callback_rate(ORDERS) == 33.3
     assert average_hours(ORDERS, "approval_requested_at", "approval_received_at") == 24.0
     by_pm = revenue_by_pm_company(ORDERS)
-    assert by_pm["ABC"]["revenue"] == Decimal("545.00")
-    assert by_pm["ABC"]["gross_profit"] == Decimal("145.00")
+    assert by_pm["ABC"]["revenue"] == Decimal("800.00")
+    assert by_pm["ABC"]["gross_profit"] == Decimal("400.00")
 
 
 def test_sample_extraction_is_complete():

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "maintenance-ops"
-version = "1.1.0"
+version = "1.2.0"
 description = "Business-rule engine for an AI-powered property maintenance assessment and repair automation system"
 readme = "README.md"
 requires-python = ">=3.10"

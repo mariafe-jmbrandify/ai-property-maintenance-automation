@@ -27,7 +27,7 @@ TECHNICIAN_FIELDS = (
 
 INTERNAL_ONLY_FIELDS = (
     "assessment_fee_cost", "labor_cost", "material_cost", "internal_cost_total",
-    "markup_pct", "technician_pay", "gross_profit", "gross_margin_pct",
+    "markup_pct", "target_margin_pct", "technician_pay", "gross_profit", "gross_margin_pct",
 )
 
 

@@ -33,11 +33,11 @@ flowchart TD
 
 | | Approved repair (`waive`, default) | Approved repair (`deduct`) | Declined estimate |
 |---|---|---|---|
-| Plumbing repair | $325.00 | $325.00 | — |
-| Assessment fee | $0.00 (credited, not billed) | −$75.00 (already paid) | $75.00 |
-| **Amount due** | **$325.00** | **$250.00** | **$75.00** |
+| Plumbing repair | $480.00 | $480.00 | — |
+| Assessment fee | $0.00 (credited, not billed) | −$150.00 (already paid) | $150.00 |
+| **Amount due** | **$480.00** | **$330.00** | **$150.00** |
 
-Internal record for the default case: client $325 − internal cost $240 = **gross profit $85 (26.2%)**.
+Internal record for the default case: client $480 − internal cost $240 = **gross profit $240 (50% margin)**. Declined estimate: $150 − $75 visit cost = $75 (50%).
 
 ## n8n nodes
 
@@ -54,8 +54,8 @@ Internal record for the default case: client $325 − internal cost $240 = **gro
 
 ## Test checklist
 
-- [ ] Approved $325 repair invoices $325 with the fee shown as credited.
-- [ ] Declined estimate invoices $75 only.
-- [ ] Financials row shows profit $85 and margin 26.2%.
+- [ ] Approved $480 repair invoices $480 with the fee shown as credited.
+- [ ] Declined estimate invoices $150 only.
+- [ ] Financials row shows profit $240 and margin 50%.
 - [ ] Invoice email contains no internal costs.
 - [ ] Payment reminders fire at 15, 30, and 45 days and stop once paid.

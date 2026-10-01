@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — 2026-10-01
+
+### Changed
+- **Pricing now targets a 50% gross margin** instead of a 35% markup: `client_price = internal_cost / (1 − 0.50)`, i.e. internal cost is half the price (a 100% markup). The old 35% markup was only a 25.9% margin.
+- `pricing.markup_pct` replaced by `pricing.target_margin_pct: 50` in `config/business_rules.yaml`; `assessments.markup_pct` column renamed `target_margin_pct`.
+- Declined-estimate assessment fee raised from $75 to $150 so it also earns 50% on the $75 visit cost.
+- All worked examples, sample sheets, scenario specs, tests and visuals recomputed: the reference job ($240 internal) is now $480 to the PM with $240 gross profit.
+
+### Added
+- `markup_to_margin()` helper and business rule PR-5 (always report margin, not markup); 3 more tests (43 total).
+
 ## 1.1.0 — 2026-10-01
 
 ### Changed

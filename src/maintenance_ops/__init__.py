@@ -7,4 +7,4 @@ scenarios depend on, so it can be unit-tested and reused in a Code module,
 a webhook, or an n8n Function node.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

@@ -3,7 +3,7 @@ from maintenance_ops.visibility import client_view, leaked_fields, technician_vi
 RECORD = {
     "pm_work_order_number": "WO-45891", "pm_company_name": "ABC Property Management",
     "estimate_id": "EST-10001", "property_address": "123 Main St", "tenant_name": "John Smith",
-    "tenant_phone": "(555) 111-1111", "scope_of_work": "Replace supply line", "client_price": "325.00",
+    "tenant_phone": "(555) 111-1111", "scope_of_work": "Replace supply line", "client_price": "480.00",
     "labor_cost": "120", "material_cost": "45", "internal_cost_total": "240", "gross_profit": "85",
     "entry_instructions": "Gate code 4589",
 }
@@ -11,7 +11,7 @@ RECORD = {
 
 def test_client_view_hides_internal_costs():
     view = client_view(RECORD)
-    assert view["client_price"] == "325.00"
+    assert view["client_price"] == "480.00"
     assert leaked_fields(view) == []
 
 

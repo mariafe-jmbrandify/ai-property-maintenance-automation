@@ -13,7 +13,7 @@
     "assessment_fee_cost": 75,
     "labor_cost": 60,
     "material_cost": 25,
-    "nte_limit": 250
+    "nte_limit": 350
   },
   {
     "scenario": "Over NTE (PM approval required)",

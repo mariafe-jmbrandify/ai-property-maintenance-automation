@@ -38,7 +38,7 @@ This project designs the whole operation as 14 connected automation scenarios or
 | [`prompts/`](prompts/README.md) | Production AI prompts and JSON schemas |
 | [`config/`](config) | Business rules and the status lifecycle as YAML (single source of truth) |
 | [`src/maintenance_ops/`](src/maintenance_ops) | Python rules engine, CLI demo, and a small HTTP API that n8n calls |
-| [`tests/`](tests) | 40 unit tests covering pricing, approvals, visibility, dispatch, SLAs, KPIs |
+| [`tests/`](tests) | 43 unit tests covering pricing, approvals, visibility, dispatch, SLAs, KPIs |
 | [`data/sheets/`](data/sheets) | CSV templates for each Google Sheet, with synthetic sample rows |
 | [`n8n/`](n8n/README.md) | Workflow list, credentials, webhook events, export and import conventions |
 
@@ -102,7 +102,7 @@ Scenarios 1–10 are branches of the main n8n workflow; 11–14 are separate wor
 ```mermaid
 flowchart TD
     A[Technician submits assessment] --> B[Internal cost = assessment fee + labor + materials]
-    B --> C[Client price = internal cost × 1 + markup, rounded up]
+    B --> C[Client price = internal cost ÷ 1 − 50% margin<br/>= 2 × cost, rounded up to $5]
     C --> D{Client price ≤ NTE limit?<br/>and internal cost ≤ optional internal cap?}
     D -->|Yes| E[Repair during the same visit<br/>→ Repair Completed]
     D -->|No| F[Stop after assessment<br/>client estimate → PM approval]
@@ -111,18 +111,20 @@ flowchart TD
     G -->|Declined| I[Invoice assessment fee only]
 ```
 
-Worked example (default rules: 35% markup, round up to $5):
+Worked example (default rules: **50% gross margin**, so internal cost is half the price, rounded up to $5):
 
 | | Same-visit repair | Approval required |
 |---|---|---|
 | Assessment fee + labor + materials (internal) | $75 + $60 + $25 = **$160** | $75 + $120 + $45 = **$240** |
-| Client price | $160 × 1.35 = $216 → **$220** | $240 × 1.35 = $324 → **$325** |
-| PM's NTE limit | $250 | $120 |
-| Decision | Repair now | Send $325 estimate for approval |
-| Invoice if approved | $220 | $325 (assessment fee credited, not billed) |
-| Gross profit | $60 | $85 |
+| Client price | $160 ÷ 0.5 = **$320** | $240 ÷ 0.5 = **$480** |
+| PM's NTE limit | $350 | $120 |
+| Decision | Repair now | Send $480 estimate for approval |
+| Invoice if approved | $320 | $480 (assessment fee credited, not billed) |
+| Gross profit (margin) | $160 (50%) | $240 (50%) |
 
 The property manager sees the scope, photos, and the client price. They never see the $240.
+
+> **Margin, not markup.** A 50% margin means the company keeps half of every invoice. That equals a 100% markup on cost. (The v1.0 default of a 35% markup was only a 26% margin.) Change `target_margin_pct` in [`config/business_rules.yaml`](config/business_rules.yaml) to adjust it.
 
 ## Quick start
 
@@ -131,7 +133,7 @@ git clone https://github.com/mariafe-jmbrandify/ai-property-maintenance-automati
 cd ai-property-maintenance-automation
 pip install -e ".[dev]"
 
-pytest -q                                  # 40 tests
+pytest -q                                  # 43 tests
 python -m maintenance_ops.cli demo         # run three sample assessments end to end
 python -m maintenance_ops.cli decide --labor 120 --materials 45 --nte 120
 python -m maintenance_ops.server --port 8080  # HTTP API used by Scenarios 1 and 6

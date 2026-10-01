@@ -2,7 +2,8 @@
 
 Decision rule (see docs/decisions/ADR-001-budget-decision-rule.md):
 
-    client_price = round_up(internal_total * (1 + markup), round_up_to)
+    client_price = round_up(internal_total / (1 - target_margin), round_up_to)
+                   (50% margin -> price = 2 x internal cost)
 
     Same-visit repair is authorized when
         client_price <= NTE limit
@@ -51,12 +52,20 @@ class InternalCost:
         return cls(*parts)
 
 
-def client_price(internal_total: Any, markup_pct: float | None = None, round_up_to: int | None = None) -> Decimal:
-    """Apply the company markup and round UP to the configured increment."""
+def markup_to_margin(markup_pct: float) -> Decimal:
+    """Convert a markup on cost into the gross margin it produces (100% markup -> 50% margin)."""
+    m = Decimal(str(markup_pct))
+    return (m / (100 + m) * 100).quantize(Decimal("0.1"))
+
+
+def client_price(internal_total: Any, margin_pct: float | None = None, round_up_to: int | None = None) -> Decimal:
+    """Price for the target gross margin, rounded UP to the configured increment."""
     rules = business_rules()["pricing"]
-    markup = Decimal(str(rules["markup_pct"] if markup_pct is None else markup_pct)) / 100
+    margin = Decimal(str(rules["target_margin_pct"] if margin_pct is None else margin_pct)) / 100
+    if not Decimal("0") <= margin < Decimal("1"):
+        raise ValueError("target margin must be at least 0% and below 100%")
     step = int(rules["round_up_to"] if round_up_to is None else round_up_to)
-    raw = _money(internal_total) * (1 + markup)
+    raw = _money(internal_total) / (1 - margin)
     if step <= 1:
         return raw.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     return Decimal(math.ceil(raw / step) * step).quantize(Decimal("0.01"))
@@ -88,12 +97,12 @@ class BudgetDecision:
         return "Repair Completed" if self.same_visit_repair else "Pending PM Approval"
 
 
-def decide(cost: InternalCost, nte_limit: Any, internal_budget_limit: Any = "config", markup_pct: float | None = None) -> BudgetDecision:
+def decide(cost: InternalCost, nte_limit: Any, internal_budget_limit: Any = "config", margin_pct: float | None = None) -> BudgetDecision:
     """Run the budget decision engine for one assessment."""
     if internal_budget_limit == "config":
         internal_budget_limit = business_rules()["decision"]["internal_budget_limit"]
     nte = _money(nte_limit)
-    price = client_price(cost.total, markup_pct=markup_pct)
+    price = client_price(cost.total, margin_pct=margin_pct)
 
     if price > nte:
         return BudgetDecision(APPROVAL_REQUIRED, cost.total, price, nte, price - nte,

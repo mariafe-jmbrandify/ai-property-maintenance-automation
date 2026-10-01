@@ -5,12 +5,12 @@ def test_decide_endpoint():
     status, body = handle("/decide", {"assessment_fee": 75, "labor": 120, "materials": 45, "nte_limit": 120})
     assert status == 200
     assert body["outcome"] == "APPROVAL_REQUIRED"
-    assert body["client_price"] == "325.00"
+    assert body["client_price"] == "480.00"
     assert body["next_status"] == "Pending PM Approval"
 
 
 def test_decide_uses_pm_default_when_work_order_has_no_nte():
-    _, body = handle("/decide", {"assessment_fee": 75, "labor": 60, "materials": 25, "pm_default_nte": 250})
+    _, body = handle("/decide", {"assessment_fee": 75, "labor": 60, "materials": 25, "pm_default_nte": 350})
     assert body["outcome"] == "WITHIN_LIMIT"
 
 

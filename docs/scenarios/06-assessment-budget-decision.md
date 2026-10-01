@@ -23,7 +23,7 @@ flowchart TD
     A[Technician submits assessment] --> B{All required fields + photos?}
     B -- no --> C[Return to technician with what's missing]
     B -- yes --> D[Internal cost = fee + labor + materials]
-    D --> E[Client price = cost × 1.35, round up to $5]
+    D --> E[Client price = cost ÷ 0.5 = 2 × cost, round up to $5]
     E --> F[Resolve NTE: work order → PM company → default]
     F --> G{Client price ≤ NTE<br/>and cost ≤ internal cap?}
     G -- yes --> H[Reply to technician: REPAIR NOW]
@@ -60,7 +60,7 @@ Schema: [`prompts/schemas/assessment.schema.json`](../../prompts/schemas/assessm
 | 2 | **Code** · validate form | Check the schema's required fields and ≥ 1 photo. Missing → **WhatsApp** the technician what's missing and stop. |
 | 3 | **Google Sheets → Get Row(s)** | Work order by `estimate_id`; PM company for `default_nte_limit`. |
 | 4 | **HTTP Request** · `POST {{RULES_ENGINE_URL}}/decide` | Body: `assessment_fee`, `labor`, `materials`, `nte_limit`, `pm_default_nte`. Returns `outcome`, `internal_total`, `client_price`, `over_by`, `next_status`. Runs [`maintenance_ops.server`](../../src/maintenance_ops/server.py). |
-| 5 | **Google Sheets → Append Row** (`assessments`) | Internal costs, `client_price`, `markup_pct`. |
+| 5 | **Google Sheets → Append Row** (`assessments`) | Internal costs, `client_price`, `target_margin_pct`. |
 | 6 | **IF** · ≤ NTE? | `outcome` = `WITHIN_LIMIT`. |
 | 7a | **WhatsApp → Send Message** | "REPAIR NOW – within approved limit." No amounts. Then **Google Sheets → Update Row**: status `Repair Completed`, `first_visit_resolution` = Yes. The technician's completion report later arrives on `/events/job_completed` (Scenario 9). |
 | 7b | **WhatsApp → Send Message** | "STOP after assessment – approval needed." |
@@ -71,7 +71,7 @@ Schema: [`prompts/schemas/assessment.schema.json`](../../prompts/schemas/assessm
 
 ```js
 const t = $json.assessment_fee + $json.labor + $json.materials;
-const price = Math.ceil(t * 1.35 / 5) * 5;               // keep in sync with config/business_rules.yaml
+const price = Math.ceil(t / (1 - 0.50) / 5) * 5;         // 50% margin; keep in sync with config/business_rules.yaml
 return [{ json: { ...$json, internal_total: t, client_price: price,
   outcome: price <= $json.nte_limit ? 'WITHIN_LIMIT' : 'APPROVAL_REQUIRED' } }];
 ```
@@ -81,9 +81,9 @@ return [{ json: { ...$json, internal_total: t, client_price: price,
 | | Within NTE | Over NTE |
 |---|---|---|
 | Internal cost | $75 + $60 + $25 = $160 | $75 + $120 + $45 = $240 |
-| Client price | $216 → $220 | $324 → $325 |
-| NTE | $250 | $120 |
-| Outcome | Repair now | Approval required (over by $205) |
+| Client price | $160 ÷ 0.5 = $320 | $240 ÷ 0.5 = $480 |
+| NTE | $350 | $120 |
+| Outcome | Repair now | Approval required (over by $360) |
 
 ## Client estimate (what the PM sees)
 
@@ -100,21 +100,21 @@ Recommended repair
 • Replace braided supply line  • Replace compression fittings
 • Pressure test plumbing       • Verify no additional leaks  • Clean work area
 
-Plumbing repair ............................................ $325.00
-Total ...................................................... $325.00
+Plumbing repair ............................................ $480.00
+Total ...................................................... $480.00
 
 Assessment fee credit: If this estimate is approved and the repair is authorized, the
 assessment fee will be credited toward the total repair cost and will not be billed
 separately. If the estimate is declined, only the assessment fee will be invoiced.
 ```
 
-**Never shown to the PM:** assessment fee cost, labor, materials, internal total, markup, technician pay, margin.
+**Never shown to the PM:** assessment fee cost, labor, materials, internal total, target margin, technician pay, profit.
 
 ## Test checklist
 
 - [ ] Incomplete form (no photos) is returned to the technician.
-- [ ] $160 internal / $250 NTE → "REPAIR NOW"; status ends `Repair Completed`; `first_visit_resolution` = Yes.
-- [ ] $240 internal / $120 NTE → "STOP"; same estimate ID updated to $325; status `Pending PM Approval`.
+- [ ] $160 internal / $350 NTE → $320 price → "REPAIR NOW"; status ends `Repair Completed`; `first_visit_resolution` = Yes.
+- [ ] $240 internal / $120 NTE → "STOP"; same estimate ID updated to $480; status `Pending PM Approval`.
 - [ ] A client price exactly equal to the NTE is treated as within the limit.
 - [ ] The PM-facing estimate passes `leaked_fields() == []`.
 - [ ] No new estimate is created in HCP.

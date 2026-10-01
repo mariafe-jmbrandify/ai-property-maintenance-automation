@@ -6,7 +6,7 @@ Conventions:
 
 - `snake_case` headers so n8n expressions (`{{ $json.status }}`) map fields reliably.
 - Timestamps in `YYYY-MM-DD HH:MM`, in the company's local time zone.
-- Money as plain numbers (`325`, not `$325.00`).
+- Money as plain numbers (`480`, not `$480.00`).
 - Columns marked **INTERNAL** must never be mapped into PM- or technician-facing messages.
 - Protect the Financials and Assessments tabs so only Operations and Accounting can edit them.
 
@@ -61,7 +61,7 @@ Master record. One row per work order; every scenario reads and writes it. Writt
 | `assessment_scheduled_at` | Assessment appointment start. |
 | `assessment_submitted_at` | When the assessment form arrived. |
 | `internal_cost_total` | INTERNAL. Fee + labor + materials. |
-| `client_price` | Client-facing price after markup. |
+| `client_price` | Client-facing price at the target margin. |
 | `decision` | `WITHIN_LIMIT` or `APPROVAL_REQUIRED`. |
 | `approval_requested_at` | Estimate sent to PM. |
 | `approval_received_at` | PM decision received. |
@@ -128,7 +128,7 @@ One row per estimate; updated in place after assessment. Written by scenario(s):
 | `estimate_title` | Standard title (EST-2). |
 | `estimate_type` | Initial Assessment (always; updated in place). |
 | `status` | Canonical status from `config/status_lifecycle.yaml`. |
-| `client_price` | Client-facing price after markup. |
+| `client_price` | Client-facing price at the target margin. |
 | `internal_cost_total` | INTERNAL. Fee + labor + materials. |
 | `approval_required` | Yes / No. |
 | `approval_status` | Pending, Approved, Declined. |
@@ -154,8 +154,8 @@ Technician assessment submissions. Contains internal costs. Written by scenario(
 | `labor_cost` | INTERNAL. |
 | `material_cost` | INTERNAL. |
 | `internal_cost_total` | INTERNAL. Fee + labor + materials. |
-| `markup_pct` | INTERNAL. Markup used. |
-| `client_price` | Client-facing price after markup. |
+| `target_margin_pct` | INTERNAL. Gross margin used to price this job (default 50). |
+| `client_price` | Client-facing price at the target margin. |
 | `photos_url` | Drive folder or links. |
 | `repair_completed_onsite` | Yes if completed during assessment. |
 | `technician_remarks` | Free text. |

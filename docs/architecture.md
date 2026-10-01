@@ -165,7 +165,7 @@ Every status change appends a row to the **Status History** sheet. KPIs such as 
 | Tenant phone, entry instructions, pets | ❌ | ✅ | ✅ |
 | Findings, scope of work, photos | ✅ | ✅ | ✅ |
 | Client price / invoice total | ✅ | ❌ | ✅ |
-| Assessment fee cost, labor, materials, markup, margin, technician pay | ❌ | ❌ | ✅ |
+| Assessment fee cost, labor, materials, margin, technician pay | ❌ | ❌ | ✅ |
 
 Implemented in [`visibility.py`](../src/maintenance_ops/visibility.py). Any outbound PM or technician message should pass `leaked_fields(payload) == []` before sending.
 

@@ -18,6 +18,8 @@ The original design promised the PM that the assessment fee "will be credited to
 | `waive` (default) | Fee is not invoiced at the visit | Repair price; fee line shown as "credited, not billed" at $0 | Assessment fee only |
 | `deduct` | Fee is invoiced at the visit | Repair price minus the fee already paid | Assessment fee only |
 
+> v1.1: amounts in the context above come from the original design (35% markup). With the 50% margin rule the same job is $480, and the declined-estimate assessment fee is $150.
+
 ## Consequences
 
 - The estimate disclaimer matches what the invoice actually does.

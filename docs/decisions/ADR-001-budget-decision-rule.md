@@ -17,6 +17,7 @@ The examples were also inconsistent (the same $75 + $120 + $45 assessment was sh
 2. An **optional internal cap** (`decision.internal_budget_limit`) can further restrict same-visit repairs, for example for new technicians. It can only make the rule stricter, never looser.
 3. The NTE limit resolves in order: work order → PM company default → global default.
 4. The decision is computed by code (`maintenance_ops.pricing.decide`), not by the AI. The AI step in Scenario 6 only validates and summarizes the technician's submission.
+5. The client price is set by a **target gross margin** (default 50%, so price = 2 × internal cost), not a markup; see business rule PR-5.
 
 ## Consequences
 
