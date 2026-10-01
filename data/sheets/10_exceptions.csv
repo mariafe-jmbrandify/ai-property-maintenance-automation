@@ -1,0 +1,2 @@
+exception_id,record_id,type,detected_at,owner,status,next_action,due_at,resolution,resolved_at
+X0001,MO-2026-0001,PM approval pending,2026-07-21 15:40,Operations,Open,Initial follow-up,2026-07-21 15:40,,

@@ -1,0 +1,3 @@
+pm_company_id,pm_company_name,platform,billing_email,approval_email,approval_contact_name,owner_approval_threshold,billing_address,payment_terms,default_nte_limit,preferred_channel,required_photos,invoice_format_notes,portal_update_method,active
+PM001,ABC Property Management,AppFolio,billing@abc-pm.example,approvals@abc-pm.example,Jordan Reyes,1000,100 Office Park Dr,Net 30,120,Email,"Before, after",PM WO # in invoice title,Browser automation,Yes
+PM002,Maple Grove Property Management,Property Meld,ap@maplegrove.example,maint@maplegrove.example,Casey Kim,750,200 Commerce St,Net 15,250,Portal,"Before, during, after",Attach completion report,API,Yes

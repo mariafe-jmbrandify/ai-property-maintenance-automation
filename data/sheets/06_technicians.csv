@@ -1,0 +1,4 @@
+technician_id,name,phone,trades,skills,service_areas,available_days,status,current_jobs,max_daily_jobs,rating,whatsapp_opt_in,calendar_id,active
+T001,Mike,(555) 900-0001,Plumbing,"Leaks, water heaters, drains",Charlotte,"Tue, Wed, Thu",Available,3,6,4.9,Yes,mike@calendar.example,Yes
+T002,Chris,(555) 900-0002,Plumbing,"Fixtures, toilets",Charlotte,"Mon, Tue",Available,1,6,4.5,Yes,chris@calendar.example,Yes
+T003,Ana,(555) 900-0003,"General Maintenance, Drywall, Painting","Patching, doors, locks","Charlotte, Matthews","Mon, Tue, Fri",Available,0,5,4.8,No,ana@calendar.example,Yes

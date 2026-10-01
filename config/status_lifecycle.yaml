@@ -1,0 +1,56 @@
+# Canonical work order statuses and the transitions allowed between them.
+# Make.com scenarios trigger on these exact strings in the Work Orders sheet,
+# so treat this file as the contract between scenarios.
+
+statuses:
+  New Work Order: {scenario: 1, phase: Intake}
+  Customer Verified: {scenario: 2, phase: Intake}
+  Awaiting Tenant Confirmation: {scenario: 3, phase: Estimate}
+  Needs More Info: {scenario: 3, phase: Internal Review}
+  Ready for Assessment Dispatch: {scenario: 4, phase: Tenant Confirmation}
+  Assessment Scheduled: {scenario: 5, phase: Assessment}
+  Pending Cost Review: {scenario: 6, phase: Assessment}
+  Pending PM Approval: {scenario: 6, phase: PM Approval}
+  Awaiting Owner Approval: {scenario: 7, phase: PM Approval}
+  Repair Approved: {scenario: 7, phase: PM Approval}
+  Estimate Declined: {scenario: 7, phase: PM Approval}
+  Repair Scheduled: {scenario: 8, phase: Repair}
+  Repair Completed: {scenario: 9, phase: QA}
+  QA Revision Required: {scenario: 9, phase: QA}
+  Ready for Tenant Confirmation: {scenario: 9, phase: QA}
+  Callback Required: {scenario: 9, phase: QA}
+  Ready for Invoice: {scenario: 10, phase: Billing}
+  Invoiced: {scenario: 10, phase: Billing}
+  Closed: {scenario: 10, phase: Closed}
+  # Hold / exception states (Scenario 12)
+  Waiting Tenant Response: {scenario: 12, phase: Exception}
+  Access Failed: {scenario: 12, phase: Exception}
+  Waiting Parts: {scenario: 12, phase: Exception}
+  Approval Delayed: {scenario: 12, phase: Exception}
+  Cancelled: {scenario: 12, phase: Closed}
+
+transitions:
+  New Work Order: [Customer Verified, Cancelled]
+  Customer Verified: [Awaiting Tenant Confirmation, Needs More Info, Cancelled]
+  Needs More Info: [Awaiting Tenant Confirmation, Cancelled]
+  Awaiting Tenant Confirmation: [Ready for Assessment Dispatch, Waiting Tenant Response, Cancelled]
+  Waiting Tenant Response: [Ready for Assessment Dispatch, Repair Scheduled, Cancelled]
+  Ready for Assessment Dispatch: [Assessment Scheduled, Cancelled]
+  Assessment Scheduled: [Pending Cost Review, Access Failed, Cancelled]
+  Access Failed: [Assessment Scheduled, Repair Scheduled, Waiting Tenant Response, Cancelled]
+  Pending Cost Review: [Repair Completed, Pending PM Approval]
+  Pending PM Approval: [Repair Approved, Awaiting Owner Approval, Estimate Declined, Approval Delayed]
+  Approval Delayed: [Repair Approved, Awaiting Owner Approval, Estimate Declined]
+  Awaiting Owner Approval: [Repair Approved, Estimate Declined, Approval Delayed]
+  Repair Approved: [Repair Scheduled, Waiting Parts, Waiting Tenant Response]
+  Waiting Parts: [Repair Scheduled]
+  Repair Scheduled: [Repair Completed, Access Failed, Waiting Parts]
+  Repair Completed: [Ready for Tenant Confirmation, QA Revision Required]
+  QA Revision Required: [Repair Completed]
+  Ready for Tenant Confirmation: [Ready for Invoice, Callback Required]
+  Callback Required: [Repair Scheduled]
+  Estimate Declined: [Ready for Invoice]
+  Ready for Invoice: [Invoiced]
+  Invoiced: [Closed]
+  Closed: []
+  Cancelled: []

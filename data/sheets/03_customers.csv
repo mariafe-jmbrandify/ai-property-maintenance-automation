@@ -1,0 +1,2 @@
+hcp_customer_id,tenant_name,phone,email,service_address,unit,pm_company_id,created_at
+CUST-12345,John Smith,(555) 111-1111,john.smith@example.com,123 Main St,204,PM001,2026-07-18 08:05

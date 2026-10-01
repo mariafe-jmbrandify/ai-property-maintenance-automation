@@ -1,0 +1,3 @@
+log_id,record_id,timestamp,channel,direction,audience,template,summary,delivery_status
+L0001,MO-2026-0001,2026-07-18 08:10,SMS,Outbound,Tenant,tenant_confirmation_v1,Asked tenant to confirm service and availability,Delivered
+L0002,MO-2026-0001,2026-07-21 15:20,Email,Outbound,PM,pm_approval_request_v1,Sent estimate EST-10001 for approval,Sent

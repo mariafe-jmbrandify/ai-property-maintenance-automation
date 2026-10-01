@@ -1,0 +1,52 @@
+[
+  {
+    "scenario": "Same-visit repair (within NTE)",
+    "pm_work_order_number": "WO-45902",
+    "pm_company_name": "Maple Grove Property Management",
+    "property_address": "88 Cedar Lane",
+    "unit": "3B",
+    "tenant_name": "Dana Lopez",
+    "trade": "Plumbing",
+    "findings": "Toilet fill valve failing; tank runs continuously.",
+    "recommendation": "Replace fill valve and flapper.",
+    "scope_of_work": "Shut off supply; replace fill valve and flapper; test and adjust water level; clean area.",
+    "assessment_fee_cost": 75,
+    "labor_cost": 60,
+    "material_cost": 25,
+    "nte_limit": 250
+  },
+  {
+    "scenario": "Over NTE (PM approval required)",
+    "pm_work_order_number": "WO-45891",
+    "pm_company_name": "ABC Property Management",
+    "property_address": "123 Main St",
+    "unit": "204",
+    "tenant_name": "John Smith",
+    "trade": "Plumbing",
+    "findings": "Braided supply line under the kitchen sink is corroded and actively leaking.",
+    "recommendation": "Replace braided supply line and compression fittings.",
+    "scope_of_work": "Remove damaged supply line; install new braided line and compression fittings; pressure test; verify no leaks; clean work area.",
+    "assessment_fee_cost": 75,
+    "labor_cost": 120,
+    "material_cost": 45,
+    "nte_limit": 120,
+    "pm_response": "approved"
+  },
+  {
+    "scenario": "Over NTE, estimate declined",
+    "pm_work_order_number": "WO-45930",
+    "pm_company_name": "ABC Property Management",
+    "property_address": "410 Birch Ave",
+    "unit": "",
+    "tenant_name": "Priya Nair",
+    "trade": "HVAC",
+    "findings": "Condenser fan motor seized; unit not cooling.",
+    "recommendation": "Replace condenser fan motor and capacitor.",
+    "scope_of_work": "Replace condenser fan motor and run capacitor; verify amperage and cooling.",
+    "assessment_fee_cost": 75,
+    "labor_cost": 180,
+    "material_cost": 220,
+    "nte_limit": 300,
+    "pm_response": "declined"
+  }
+]

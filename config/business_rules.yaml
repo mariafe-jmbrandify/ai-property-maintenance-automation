@@ -1,0 +1,54 @@
+# Business rules for the maintenance operations platform.
+# Every automation (Make.com / n8n scenario) and the Python reference
+# implementation read the same values, so change them here, not in a scenario.
+
+pricing:
+  # Markup applied to the total internal cost to produce the client unit price.
+  markup_pct: 35
+  # Client prices are rounded UP to the nearest multiple of this amount.
+  round_up_to: 5
+  assessment_fee:
+    internal_cost: 75   # what the visit costs the company (technician pay)
+    client_price: 75    # what the PM company is billed if the repair is declined
+  # waive  -> on approval the fee is not billed separately (it is already inside the repair price)
+  # deduct -> the fee was billed up front, so it is subtracted from the repair invoice
+  assessment_credit_mode: waive
+
+decision:
+  # Default Not-To-Exceed (NTE) maintenance limit when neither the work order
+  # nor the PM company profile supplies one.
+  default_nte_limit: 120
+  # Optional internal cap on what a technician may spend on a same-visit repair,
+  # independent of the client's NTE. null = no extra cap.
+  internal_budget_limit: null
+
+follow_ups:
+  pm_approval_minutes: [20, 1440, 2880]        # first follow-up, reminder, escalation
+  owner_approval_max_hours: 48
+  tenant_response_minutes: [1440, 2880]        # reminder, notify admin + escalate to PM
+  technician_acceptance_minutes: 15            # then offer to the next technician
+  payment_days: {reminder: 15, escalate: 30, collections: 45}
+
+sla_minutes:
+  initial_tenant_contact: 15
+  estimate_creation: 30
+  assessment_scheduling: 1440
+  pm_approval_follow_up: 1440
+  invoice_generation: 480
+
+coordinator:
+  poll_interval_minutes: 5
+  inactive_statuses: [Closed, Cancelled, Paid]
+
+trades:
+  - Plumbing
+  - Electrical
+  - HVAC
+  - Appliance
+  - Roofing
+  - Drywall
+  - Painting
+  - Carpentry
+  - General Maintenance
+
+priorities: [Emergency, High, Normal, Low]

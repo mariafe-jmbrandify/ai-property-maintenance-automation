@@ -1,0 +1,2 @@
+invoice_id,record_id,pm_work_order_number,pm_company_id,invoice_type,invoice_total,assessment_credit_applied,technician_cost,gross_profit,gross_margin_pct,technician_payment_status,sent_at,payment_status,paid_at,days_outstanding
+INV-10002,MO-2026-0002,WO-45902,PM002,repair,220,Waived,160,60,27.3,Pending,2026-07-21 16:00,Sent,,0

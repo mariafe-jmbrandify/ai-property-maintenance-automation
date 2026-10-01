@@ -1,0 +1,24 @@
+From: maintenance@abc-pm.example
+To: workorders@vendor.example
+Subject: New Maintenance Request - Work Order WO-45891 (AppFolio)
+
+A new work order has been assigned to your company.
+
+Work Order #: WO-45891
+Property Management: ABC Property Management
+Property: 123 Main St, Unit 204, Charlotte, NC 28202
+Resident: John Smith
+Phone: 555-111-1111
+Email: john.smith@example.com
+Priority: Normal
+Not To Exceed: $120.00
+
+Description:
+Kitchen sink is leaking underneath. Water is pooling in the cabinet.
+
+Entry: Call resident before arrival. Gate code 4589. Dog in backyard.
+
+Photos: 2 attached
+
+--
+This message was sent from a demo property management platform. All data is fictional.

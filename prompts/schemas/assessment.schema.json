@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assessment.schema.json",
+  "title": "Technician assessment submission",
+  "description": "Payload submitted by the technician form in Scenario 6. Money fields are internal costs.",
+  "type": "object",
+  "required": ["estimate_id", "findings", "troubleshooting", "root_cause", "recommendation", "scope_of_work", "assessment_fee_cost", "labor_cost", "material_cost", "photo_urls"],
+  "properties": {
+    "estimate_id": {"type": "string"},
+    "technician": {"type": "string"},
+    "findings": {"type": "string", "minLength": 10},
+    "troubleshooting": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "root_cause": {"type": "string"},
+    "recommendation": {"type": "string"},
+    "scope_of_work": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "assessment_fee_cost": {"type": "number", "minimum": 0},
+    "labor_cost": {"type": "number", "minimum": 0},
+    "material_cost": {"type": "number", "minimum": 0},
+    "photo_urls": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "repair_completed_onsite": {"type": "boolean", "default": false},
+    "technician_remarks": {"type": "string"}
+  }
+}

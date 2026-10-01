@@ -1,0 +1,17 @@
+{
+  "pm_company": "ABC Property Management",
+  "pm_work_order_number": "WO-45891",
+  "source_platform": "AppFolio",
+  "property_address": "123 Main St, Charlotte, NC 28202",
+  "unit": "204",
+  "tenant_name": "John Smith",
+  "tenant_phone": "555-111-1111",
+  "tenant_email": "john.smith@example.com",
+  "issue_description": "Kitchen sink leaking underneath; water pooling in the cabinet.",
+  "trade": "Plumbing",
+  "priority": "Normal",
+  "nte_limit": "$120.00",
+  "entry_instructions": "Call resident before arrival. Gate code 4589.",
+  "pet_notes": "Dog in backyard",
+  "photo_count": 2
+}

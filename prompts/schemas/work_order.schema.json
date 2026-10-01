@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work_order.schema.json",
+  "title": "AI-extracted work order",
+  "description": "Structured output of the Scenario 1 extraction prompt. Unknown values must be null, never guessed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pm_company", "pm_work_order_number", "property_address", "tenant_name", "tenant_phone", "tenant_email", "issue_description", "priority", "nte_limit"],
+  "properties": {
+    "pm_company": {"type": ["string", "null"]},
+    "pm_work_order_number": {"type": ["string", "null"], "description": "Exactly as written by the PM platform, e.g. WO-45891"},
+    "source_platform": {"type": ["string", "null"], "enum": ["AppFolio", "Property Meld", "Rentvine", "Buildium", "Other", null]},
+    "property_address": {"type": ["string", "null"]},
+    "unit": {"type": ["string", "null"]},
+    "tenant_name": {"type": ["string", "null"]},
+    "tenant_phone": {"type": ["string", "null"]},
+    "tenant_email": {"type": ["string", "null"]},
+    "issue_description": {"type": ["string", "null"]},
+    "trade": {"type": ["string", "null"], "enum": ["Plumbing", "Electrical", "HVAC", "Appliance", "Roofing", "Drywall", "Painting", "Carpentry", "General Maintenance", null]},
+    "priority": {"type": "string", "enum": ["Emergency", "High", "Normal", "Low"]},
+    "nte_limit": {"type": ["number", "null"], "description": "Not-to-exceed amount in USD, number only"},
+    "entry_instructions": {"type": ["string", "null"]},
+    "pet_notes": {"type": ["string", "null"]},
+    "photo_count": {"type": ["integer", "null"]}
+  }
+}

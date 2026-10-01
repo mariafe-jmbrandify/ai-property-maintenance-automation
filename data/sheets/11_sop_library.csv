@@ -1,0 +1,3 @@
+sop_id,sop_name,category,audience,instructions_url,version,updated_at
+SOP-01,Work Order Intake,Operations,Dispatcher,https://docs.example/sop-intake,1.0,2026-07-01
+SOP-02,Assessment Documentation,Field,Technician,https://docs.example/sop-assessment,1.0,2026-07-01
