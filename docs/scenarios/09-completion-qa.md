@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `09 - Completion QA Signoff` |
-| **Trigger** | Watch Rows, `status` = `Repair Completed` (from Scenario 6 same-visit or Scenario 8) |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → `job_completed` branch (QA) and `tenant_signoff` branch (sign-off) (`S09`) |
+| **Trigger** | **Webhook** `POST /events/job_completed` (HCP job completed or the completion form); tenant replies via `/events/sms` |
 | **Exit status** | `Ready for Invoice` or `Callback Required` |
 | **Systems** | HCP, OpenAI / Claude, Google Sheets, Twilio, Gmail, PM platform |
 | **Rules** | QA-1, QA-2, QA-3 |
@@ -34,19 +34,26 @@ flowchart TD
 
 Job #, estimate #, repair completed (itemized), final findings, materials used, labor hours (internal), before / during / after photos, remarks, optional tenant signature.
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Watch Rows + filter | `status` = `Repair Completed` |
-| 2 | AI → Create a Completion | [`prompts/04-scope-validation.md`](../../prompts/04-scope-validation.md) |
-| 3 | Slack / Gmail → QA card | AI result + photos; **Pass** / **Revise** buttons (webhooks) |
-| 4 | Router | Pass → tenant SMS. Revise → message technician with `note_to_technician`. |
-| 5 | Twilio → tenant | Sign-off message below; record reply via webhook |
-| 6 | Router: tenant reply | 1 → `Ready for Invoice`. 2 → callback job. No reply in 48 h → `Ready for Invoice` with note "tenant did not respond". |
-| 7 | Gmail → PM completion package | PM WO #, estimate #, job #, completion summary, final scope, before/after photos, completion date |
-| 8 | PM platform update | Status Completed, completion date, notes, photos |
-| 9 | Sheets → Update | `qa_status`, `tenant_signoff`, `callback_required`, `status`; append history |
+**`job_completed` branch**
+
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Google Sheets → Get Row(s)** | Work order by `job_id` or `estimate_id`. |
+| 2 | **OpenAI → Message a Model** | [`prompts/04-scope-validation.md`](../../prompts/04-scope-validation.md), JSON output. |
+| 3 | **Slack → Send Message** + **Wait** · On Webhook Call | QA card with **Pass** / **Revise** links that resume the execution. |
+| 4 | **IF** · passed? | False → **Gmail / WhatsApp** to the technician with `note_to_technician`; status `QA Revision Required`. |
+| 5 | **Twilio → Send SMS** | Sign-off message below; status `Ready for Tenant Confirmation`. |
+
+**`tenant_signoff` branch** (reached from `/events/sms` when the status is `Ready for Tenant Confirmation`)
+
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Switch** · fixed / callback | Reply `1` → fixed. Reply `2` → callback. |
+| 2 | fixed → **Google Sheets → Update Row** | `tenant_signoff` = Yes, status `Ready for Invoice` → continues into Scenario 10. |
+| 3 | callback → **HTTP Request** · HCP create callback job (linked to the original) | Status `Callback Required` → continues into Scenario 8's ranking and dispatch. |
+| — | No reply in 48 h | The Exception Monitor moves the work order to `Ready for Invoice` with the note "tenant did not respond". |
 
 ## Tenant sign-off message
 

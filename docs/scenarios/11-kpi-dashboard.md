@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `11 - KPI Refresh and Reports` |
-| **Trigger** | Daily at 6:00 AM, weekly Monday 7:00 AM, and on every `Closed` status |
+| **n8n workflow** | `Maintenance Ops · KPI Report` (separate workflow) |
+| **Trigger** | **Schedule Trigger**: daily 6:00 AM and Monday 7:00 AM |
 | **Systems** | Google Sheets (formulas / pivots, Looker Studio optional), OpenAI / Claude, Gmail / Slack / Teams |
 | **Code** | `maintenance_ops.kpis` |
 
@@ -40,16 +40,16 @@ flowchart LR
 
 Time-based KPIs read **Status History**, so they survive later edits to the work order row.
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Scheduler / Watch Rows (`Closed`) | — |
-| 2 | Sheets → Get Range Values | Work orders, status history, financials |
-| 3 | Sheets formulas / pivot tables (or a scheduled job running `maintenance_ops.kpis`) | Produces the KPI values |
-| 4 | Sheets → Update dashboard tabs | Work Order KPIs, Technician KPIs, Financial KPIs, PM Company KPIs |
-| 5 | AI → Create a Completion | [`prompts/06-weekly-management-report.md`](../../prompts/06-weekly-management-report.md) with this week vs last week |
-| 6 | Gmail / Slack / Teams | Daily summary (Ops), weekly report (Owner, Ops, Accounting) |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Schedule Trigger** | Two rules: daily 06:00, weekly Monday 07:00. |
+| 2 | **Google Sheets → Get Row(s)** ×3 | `work_orders`, `status_history`, `financials`. |
+| 3 | **Code** · calculate KPIs | Port of `maintenance_ops.kpis` (or rely on formula tabs in the sheet). |
+| 4 | **Google Sheets → Update Row** | Dashboard tabs. |
+| 5 | **AI Agent** · Report Agent | [`prompts/06-weekly-management-report.md`](../../prompts/06-weekly-management-report.md) with this week vs last week. |
+| 6 | **Gmail → Send** / **Slack → Send Message** | Daily summary to Ops; weekly report to Owner, Ops, Accounting. |
 
 ## Example weekly report
 

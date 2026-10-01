@@ -2,7 +2,8 @@
 
 | | |
 |---|---|
-| **Build as** | Claude Project or OpenAI Assistant with file search, exposed through Slack / WhatsApp / a web chat; Make.com handles routing and logging |
+| **n8n workflow** | `Maintenance Ops · SOP Assistant` (separate workflow) |
+| **Build as** | **Chat Trigger** (or Slack Trigger) → **AI Agent** with a **Vector Store Tool** over the SOP documents (Supabase, Pinecone or the in-memory store for a demo), **OpenAI Chat Model**, **Simple Memory** per user; questions and gaps logged to Google Sheets |
 | **Sources** | SOP library, troubleshooting library, PM company rules, pricing rules, warranty policy |
 | **Sheets** | `sop_library`, `troubleshooting_library`, `pm_companies` |
 

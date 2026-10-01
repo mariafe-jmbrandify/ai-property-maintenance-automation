@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `05 - Assessment Dispatch` |
-| **Trigger** | Watch Rows, `status` = `Ready for Assessment Dispatch` |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → `tenant_reply` branch after the IF complete (`S05`); technician answers on `/events/dispatch_reply` |
+| **Trigger** | None of its own: continues from Scenario 4 |
 | **Exit status** | `Assessment Scheduled` |
 | **Systems** | Google Sheets, OpenAI / Claude, WhatsApp / SMS, HCP, Gmail, PM platform |
 | **Rules** | DIS-1, DIS-2, DIS-4, technician acceptance timer |
@@ -39,21 +39,21 @@ flowchart TD
 
 Tenant confirmed ✅ · availability received ✅ · entry instructions collected ✅ · initial estimate exists ✅ · HCP customer exists ✅
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Watch Rows + filter | `status` = `Ready for Assessment Dispatch` |
-| 2 | Filter | Dispatch checks above |
-| 3 | AI (only if `trade` empty) | [`prompts/02-trade-classification.md`](../../prompts/02-trade-classification.md) |
-| 4 | Sheets → Search Rows (`technicians`) | `active` = Yes, trade, service area, available day, `current_jobs` < `max_daily_jobs`. Sort by workload, then rating. |
-| 5 | **Repeater / Iterator** over ranked technicians | For each: send offer, then **Webhook response wait** (or a Data store flag polled by a 1-minute scenario) up to 15 minutes |
-| 6 | **WhatsApp Cloud API → Send template** with quick-reply buttons | Dispatch package below |
-| 7 | HCP → Create appointment / schedule estimate visit | Title `{{pm_work_order_number}} - {{trade}} Assessment`, window, assigned technician |
-| 8 | Sheets → Update a Row | `assessment_technician`, `assessment_scheduled_at`, `status` = `Assessment Scheduled`; append `status_history` |
-| 9 | Twilio → SMS tenant | Template below |
-| 10 | Gmail → PM | Template below, to `approval_email` |
-| 11 | PM platform update | API if available; otherwise a Playwright job (log in, open WO, set status, enter appointment, save) |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **IF** · dispatch checks | DIS-1 checks above. False → append to `exceptions`. |
+| 2 | **Text Classifier** (only if `trade` is empty) | Categories from `config/business_rules.yaml`; prompt [`prompts/02-trade-classification.md`](../../prompts/02-trade-classification.md). |
+| 3 | **Google Sheets → Get Row(s)** (`technicians`) | `active` = Yes. |
+| 4 | **Code** · rank technicians | Port of `maintenance_ops.dispatch.rank_technicians`: trade, area, available day, capacity; sort by exact trade, workload, rating. Returns the ordered list. |
+| 5 | **WhatsApp Business Cloud → Send Message** | Template with **Accept** / **Decline** quick replies to the first candidate. Button replies arrive at `POST /events/dispatch_reply`. |
+| 6 | **Wait** · On Webhook Call, timeout 15 min | Resumed by the `dispatch_reply` branch (it calls the stored `resumeUrl`). Declined or timed out → **Loop Over Items** to the next candidate; none left → Slack the dispatcher. |
+| 7 | **HTTP Request** · HCP schedule estimate visit | Title `{{pm_work_order_number}} - {{trade}} Assessment`, window, technician. |
+| 8 | **Google Sheets → Update Row** | `assessment_technician`, `assessment_scheduled_at`, status `Assessment Scheduled`; append history. |
+| 9 | **Twilio → Send SMS** | Tenant appointment message. |
+| 10 | **Gmail → Send** | PM notice to `approval_email`. |
+| 11 | **HTTP Request** or **Execute Workflow** | PM platform update: API if available, otherwise a sub-workflow that calls a Playwright service (log in, open WO, set status and appointment, save). |
 
 ## Dispatch package (technician view — no PM company, no money)
 

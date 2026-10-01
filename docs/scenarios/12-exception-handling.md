@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `12 - Exception Monitor` |
-| **Trigger** | Every hour (scheduled) and on status changes to hold states |
+| **n8n workflow** | `Maintenance Ops · Exception Monitor` (separate workflow) |
+| **Trigger** | **Schedule Trigger** every 10 minutes (timers) and daily 8:00 AM (payments) |
 | **Systems** | Google Sheets, Twilio, Gmail / Slack, HCP |
 | **Code** | `maintenance_ops.followups.detect_exceptions` |
 
@@ -15,7 +15,7 @@ Catch work orders that are stuck, failed, or unusual, give each one an **owner, 
 
 ```mermaid
 flowchart TD
-    A[Every hour: active work orders] --> B[detect_exceptions]
+    A[Every 10 min: active work orders] --> B[detect_exceptions]
     B --> C{New exception?}
     C -- no --> Z[Done]
     C -- yes --> D[Exceptions sheet: type, owner, due]
@@ -25,6 +25,17 @@ flowchart TD
     G -- yes --> H[Close exception · resume normal status]
     G -- no, past due --> I[Escalate to Ops manager]
 ```
+
+## n8n nodes
+
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Schedule Trigger** | Every 10 min; second rule daily 08:00 for payment follow-ups. |
+| 2 | **Google Sheets → Get Row(s)** | Active work orders (status not Closed / Cancelled), plus open `exceptions` and the last follow-up step per work order from `communication_log`. |
+| 3 | **Code** · SLA + timer check | Port of `maintenance_ops.followups.detect_exceptions` and the follow-up step functions. Emits one item per due action. |
+| 4 | **Switch** · action type | tenant reminder · PM reminder · escalation · payment reminder · parts check. |
+| 5 | **Twilio / Gmail / Slack** | The message for that action. |
+| 6 | **Google Sheets → Append Row** | `exceptions` (new) and `communication_log` (so each step is sent once); **Update Row** for status changes such as `Approval Delayed`. |
 
 ## Playbooks
 
@@ -71,7 +82,7 @@ We weren't able to access your home today. Please reply with a new day and time 
 
 ## Test checklist
 
-- [ ] Each playbook creates exactly one open exception (no duplicates on the next hourly run).
+- [ ] Each playbook creates exactly one open exception (no duplicates on the next 10-minute run).
 - [ ] Resolving the underlying status closes the exception.
-- [ ] Emergencies alert within one minute (pushed at intake, not waiting for the hourly run).
+- [ ] Emergencies alert within one minute (pushed at intake, not waiting for the 10-minute run).
 - [ ] `tests/test_followups.py` passes.

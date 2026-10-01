@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `01 - Work Order Intake AI Extraction` |
-| **Trigger** | New email in the maintenance inbox |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → intake branch (nodes prefixed `S01`) |
+| **Trigger** | **Gmail Trigger** on the maintenance inbox |
 | **Exit status** | `New Work Order` (complete) or `Needs More Info` (missing data) |
 | **Systems** | Gmail, OpenAI / Claude, Google Drive, Google Sheets |
 | **Rules** | WO-1, WO-3, WO-4 |
@@ -16,7 +16,7 @@ Receive maintenance requests from AppFolio, Property Meld, Rentvine, and Buildiu
 
 ```mermaid
 flowchart TD
-    A[Gmail: Watch Emails] --> B{Filter: work order email?}
+    A[Gmail Trigger] --> B{IF: work order email?}
     B -- no --> X[Ignore]
     B -- yes --> C[Text Parser: HTML to text, strip signatures]
     C --> D[AI: extract work order JSON]
@@ -37,43 +37,40 @@ flowchart TD
 
 Create the spreadsheet **AI Maintenance Operations Database** with the tabs from [`data/sheets/`](../../data/sheets) (at minimum `work_orders`, `pm_companies`, `status_history`, `exceptions`).
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | **Gmail → Watch Emails** | Folder: maintenance inbox (or a label applied by a Gmail filter). Criteria: unread. Max results: 10. Outputs: email ID, sender, subject, body (HTML + text), attachments, date. |
-| 2 | **Filter** | Subject contains `Work Order` OR `Maintenance` OR `Repair Request`, **or** sender domain is in the PM Companies list. Passes "New Maintenance Request – AppFolio"; rejects marketing email. |
-| 3 | **Text Parser → HTML to text** | Input: body HTML. Then **Text Parser → Replace** to cut everything after common signature markers (`--`, `Sent from`, confidentiality footers). |
-| 4 | **OpenAI → Create a Completion** (or **Anthropic Claude → Create a Message**) | Prompt: [`prompts/01-work-order-extraction.md`](../../prompts/01-work-order-extraction.md). Temperature 0. Response format: JSON schema [`work_order.schema.json`](../../prompts/schemas/work_order.schema.json). |
-| 5 | **JSON → Parse JSON** | Data structure generated from the schema. Optional: **HTTP → POST /extraction** to the rules engine to validate and normalize in one step. |
-| 6 | **Google Sheets → Search Rows** (idempotency) | Sheet `work_orders`, filter `pm_work_order_number` = extracted number AND `pm_company_name` = extracted company. If found → route to **Update a Row** and stop. |
-| 7 | **Google Sheets → Search Rows** (PM company) | Sheet `pm_companies`, match on name or sender domain. Supplies `pm_company_id` and `default_nte_limit`. |
-| 8 | **Google Drive → Create a Folder** + **Iterator** + **Upload a File** | Folder `Maintenance Photos/{record_id} {pm_work_order_number}`. Upload each image attachment. Save the folder URL. |
-| 9 | **Tools → Set Variable** | `record_id` = `MO-{{formatDate(now; "YYYY")}}-{{padStart(row count + 1; 4; "0")}}`; `status` = `New Work Order` if all required fields present, else `Needs More Info`. Required: PM company, PM WO #, address, tenant name, issue, and phone or email. |
-| 10 | **Google Sheets → Add a Row** | Sheet `work_orders`. Mapping below. |
-| 11 | **Google Sheets → Add a Row** | Sheet `status_history`: `""` → status, changed_by `Make: 01 Intake`. |
-| 12 | **Router → Gmail / Twilio** | Emergency → SMS + email to on-call dispatcher now. Needs More Info → email Operations with the missing fields. Otherwise → email Operations "New work order received". |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Gmail Trigger** | Poll every minute. Filters: label `Work Orders` (applied by a Gmail filter) or query `subject:(work order OR maintenance OR "repair request")`. Download attachments: on. |
+| 2 | **IF** · work order email? | Subject matches the patterns above **or** sender domain is in the PM Companies sheet (looked up once per run with a **Google Sheets → Get Rows** node before this IF). |
+| 3 | **Code** · clean email | Strip HTML, signatures and confidentiality footers; keep the first 6,000 characters. |
+| 4 | **AI Agent** · Intake Agent | System prompt: [`prompts/01-work-order-extraction.md`](../../prompts/01-work-order-extraction.md). Sub-nodes: **OpenAI Chat Model** (or **Anthropic Chat Model**, temperature 0), **Simple Memory** (not required for one-shot extraction, useful when Ops replies with corrections), **Structured Output Parser** using [`work_order.schema.json`](../../prompts/schemas/work_order.schema.json). |
+| 5 | **HTTP Request** · validate | `POST {{RULES_ENGINE_URL}}/extraction` with the agent output. Returns normalized data, `missing`, `next_status`. (No rules engine? Use an IF on the required fields.) |
+| 6 | **Google Sheets → Get Row(s)** · duplicate check | `work_orders` where `pm_work_order_number` and `pm_company_name` match. Found → **Google Sheets → Update Row** and stop. |
+| 7 | **IF** · valid? | `next_status` = `New Work Order`. False → **Gmail → Send** to Ops with the missing fields, and append the row as `Needs More Info`. |
+| 8 | **Google Drive → Upload** | One file per attachment into `Maintenance Photos/{record_id} {pm_work_order_number}` (create the folder first with **Google Drive → Create Folder**). |
+| 9 | **Google Sheets → Append Row** | `work_orders`, mapping below; then append to `status_history`. |
+| 10 | **IF** · emergency? | `priority` = `Emergency` → **Twilio → Send SMS** to the on-call dispatcher immediately. |
+| 11 | → continues | Straight into Scenario 2 (same branch, no new trigger). |
 
-**Error handler** on modules 4, 8, 10: **Break** with 3 retries, then add a row to `exceptions` (`type` = `Intake failed`) and email Operations with the original email link.
+**Error handling:** set **On Error → Continue (using error output)** on nodes 4, 8 and 9 and connect the error outputs to a **Google Sheets → Append Row** on `exceptions` plus a **Gmail → Send** to Ops. Also set a workflow-level **Error Workflow** that alerts Ops.
 
-### Field mapping (module 10)
+### Field mapping (node 9)
 
 | Sheet column | Source |
 |--------------|--------|
-| `record_id` | Variable from module 9 |
-| `pm_work_order_number` | `pm_work_order_number` |
-| `source_platform` | `source_platform` |
-| `pm_company_id`, `pm_company_name` | Module 7 |
-| `received_at` | Email date |
-| `status` | Variable from module 9 |
-| `priority`, `trade` | AI output |
-| `nte_limit` | AI `nte_limit`, else PM company `default_nte_limit` |
-| `property_address`, `unit` | AI output |
-| `tenant_name`, `tenant_phone`, `tenant_email` | AI output |
-| `issue_description`, `entry_instructions`, `pet_notes` | AI output |
-| `photos_folder_url` | Module 8 |
-| `next_action` / `next_action_owner` | `Verify customer` / `Automation`, or `Complete missing info` / `Operations` |
-| `last_updated_at` | `now` |
+| `record_id` | `MO-{{$now.year}}-{{row number padded to 4}}` (Code node) |
+| `pm_work_order_number`, `source_platform` | Agent output |
+| `pm_company_id`, `pm_company_name` | PM Companies lookup |
+| `received_at` | Gmail `date` |
+| `status` | `New Work Order` |
+| `priority`, `trade`, `property_address`, `unit` | Agent output |
+| `tenant_name`, `tenant_phone`, `tenant_email` | Normalized by `/extraction` |
+| `nte_limit` | Agent output, else PM company `default_nte_limit` |
+| `issue_description`, `entry_instructions`, `pet_notes` | Agent output |
+| `photos_folder_url` | Node 8 |
+| `next_action` / `next_action_owner` | `Verify customer` / `Automation` |
+| `last_updated_at` | `{{$now}}` |
 
 ## Messages
 

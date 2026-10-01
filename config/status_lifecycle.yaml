@@ -1,5 +1,5 @@
 # Canonical work order statuses and the transitions allowed between them.
-# Make.com scenarios trigger on these exact strings in the Work Orders sheet,
+# n8n branches route and update on these exact strings in the Work Orders sheet,
 # so treat this file as the contract between scenarios.
 
 statuses:

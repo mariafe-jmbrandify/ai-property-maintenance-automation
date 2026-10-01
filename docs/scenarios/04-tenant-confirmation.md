@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `04 - Tenant Confirmation Discovery` |
-| **Trigger** | Watch Rows, `status` = `Awaiting Tenant Confirmation` |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → outbound at the end of intake; replies in the `sms` → `tenant_reply` branch (`S04`) |
+| **Trigger** | Outbound: continues from Scenario 3. Replies: **Webhook** `POST /events/sms` (Twilio inbound) |
 | **Exit status** | `Ready for Assessment Dispatch` (or `Waiting Tenant Response`, `Cancelled`) |
 | **Systems** | Twilio SMS / WhatsApp Cloud API, OpenAI / Claude, HCP, Google Sheets |
 | **Rules** | DIS-1, follow-up timers (tenant) |
@@ -28,31 +28,29 @@ flowchart TD
     G -- no reply --> K[24 h reminder → 48 h admin + PM escalation]
 ```
 
-## Modules
+## n8n nodes
 
-Two scenarios work together:
+**Outbound (end of the intake branch)**
 
-**4a — Outbound (Watch Rows)**
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Twilio → Send SMS** (or **WhatsApp Business Cloud → Send Message** with a template) | Opening message: "Hi {{first_name}}, this is {{vendor}} about your maintenance request at {{address}}. Do you still need service?" |
+| 2 | **Google Sheets → Update Row** | `tenant_contacted_at`, `first_tenant_contact_at` = now; append `communication_log`. |
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Watch Rows + filter | `status` = `Awaiting Tenant Confirmation` and `tenant_contacted_at` empty |
-| 2 | **Twilio → Send SMS** (or WhatsApp template message) | Opening message below |
-| 3 | Sheets → Update a Row | `tenant_contacted_at`, `first_tenant_contact_at` = now |
-| 4 | Sheets → Add a Row | `communication_log` |
+**Replies (event router)**
 
-**4b — Conversation (Webhook from Twilio / WhatsApp)**
-
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | **Webhooks → Custom webhook** | Twilio inbound SMS / WhatsApp webhook |
-| 2 | Sheets → Search Rows | Find the active work order by tenant phone |
-| 3 | **Data store → Get record** | Conversation history keyed by `record_id` |
-| 4 | **AI → Create a Completion** | System prompt [`prompts/03-tenant-discovery.md`](../../prompts/03-tenant-discovery.md) + history + new message |
-| 5 | Twilio → Send SMS | AI reply |
-| 6 | Data store → Update record | Append both messages |
-| 7 | **AI → Create a Completion** (summary) | Returns the summary JSON when the agent says it is done |
-| 8 | Router | Emergency → dispatcher alert. Complete → update HCP + Sheets. Resolved → Cancelled. |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Webhook** `POST /events/:event` | Respond immediately with an empty TwiML `<Response/>` (via **Respond to Webhook**) so Twilio doesn't retry. |
+| 2 | **Switch** · route by event | `sms` output → node 3. |
+| 3 | **Google Sheets → Get Row(s)** | Active work order where `tenant_phone` = sender. |
+| 4 | **Switch** · by status | `Awaiting Tenant Confirmation` / `Waiting Tenant Response` → `tenant_reply` (this scenario). `Ready for Tenant Confirmation` → `tenant_signoff` (Scenario 9). |
+| 5 | **AI Agent** · Tenant Agent | System prompt [`prompts/03-tenant-discovery.md`](../../prompts/03-tenant-discovery.md). **Simple Memory** keyed by `record_id` (session key) holds the conversation across messages. **Structured Output Parser** returns the summary JSON when done. |
+| 6 | **Twilio → Send SMS** | The agent's reply. |
+| 7 | **IF** · complete? | `service_confirmed` and `missing` is empty. False → stop (wait for the next SMS). |
+| 8 | **IF** · emergency? | True → SMS on-call dispatcher. |
+| 9 | **HTTP Request** · HCP update estimate notes | Availability, entry, pets, issue update. |
+| 10 | **Google Sheets → Update Row** | Fields below, status `Ready for Assessment Dispatch` → continues into Scenario 5. |
 
 ## Discovery questions
 

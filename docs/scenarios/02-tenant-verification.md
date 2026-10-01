@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `02 - Tenant Verification HCP Customer` |
-| **Trigger** | Google Sheets → Watch Rows, `status` = `New Work Order` |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → intake branch, after the row is appended (`S02`) |
+| **Trigger** | None of its own: continues from Scenario 1 in the same execution |
 | **Exit status** | `Customer Verified` |
 | **Systems** | Google Sheets, Housecall Pro |
 | **Rules** | WO-1, WO-2 |
@@ -16,7 +16,7 @@ Find or create the tenant as a Housecall Pro customer and attach the PM company 
 
 ```mermaid
 flowchart TD
-    A[Watch Rows: New Work Order] --> B[Search PM Companies]
+    A[From Scenario 1: row appended] --> B[Search PM Companies]
     B --> C{PM company found and active?}
     C -- no --> X[Exception: unknown PM company → Operations]
     C -- yes --> D[HCP: search customer<br/>phone → email → name + address]
@@ -27,19 +27,20 @@ flowchart TD
     G --> H
 ```
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | **Google Sheets → Watch Rows** | Sheet `work_orders`. Followed by a filter: `status` = `New Work Order`. |
-| 2 | **Google Sheets → Search Rows** | Sheet `pm_companies`, `pm_company_id` = row value. Returns billing email, approval email, default NTE, payment terms. |
-| 3 | **Filter** | PM company found AND `active` = Yes. Else → exception `Unknown PM company`. |
-| 4 | **Housecall Pro → Search customers** (HTTP module to the HCP API if the native app isn't available on your plan) | Search order: tenant phone, then tenant email, then name + service address. |
-| 5 | **Router** | Route A: customer found. Route B: not found. |
-| 6A | **HCP → Update customer** | Phone, email, address. Custom fields: `PM Company`, `PM Company ID`, `Billing Account`, `Work Order Source`. |
-| 6B | **HCP → Create customer** | Name, phone, email, service address + the same custom fields. |
-| 7 | **Google Sheets → Update a Row** | `hcp_customer_id`, `status` = `Customer Verified`, `next_action` = `Create initial estimate`. |
-| 8 | **Google Sheets → Add a Row** | `customers` (Route B only) and `status_history`. |
+Housecall Pro has no built-in n8n node, so every Housecall Pro call is an **HTTP Request** node using a shared **Header Auth** credential (`Authorization: Token {{HOUSECALL_PRO_API_KEY}}`). API access depends on your Housecall Pro plan; check it before building.
+
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Google Sheets → Get Row(s)** | `pm_companies` where `pm_company_id` = the work order's. |
+| 2 | **IF** · PM company active? | False → append to `exceptions` (`Unknown PM company`) and stop this branch. |
+| 3 | **HTTP Request** · HCP search customers | `GET /customers?q={{tenant_phone}}`; if empty, retry with email, then name + address (three requests chained through IF nodes, or one **Code** node that tries each). |
+| 4 | **IF** · customer found? | — |
+| 5a | **HTTP Request** · HCP update customer | Phone, email, address + custom fields `PM Company`, `PM Company ID`, `Billing Account`, `Work Order Source`. |
+| 5b | **HTTP Request** · HCP create customer | Same fields. |
+| 6 | **Merge** (append) | Joins both routes. |
+| 7 | **Google Sheets → Update Row** | `hcp_customer_id`, `status` = `Customer Verified`; append `status_history` (and `customers` on 5b). |
 
 ## Data structure in Housecall Pro
 

@@ -29,6 +29,14 @@ The original design document described the full lifecycle well. Turning it into 
 | 8 | Scenario 11 pulled from GoHighLevel, which wasn't in the stack | Listed as optional in the tech stack |
 | 9 | Emergency path only in Scenario 12 | Emergencies flagged at intake and pushed immediately |
 
+## Orchestrator change (v1.1)
+
+| # | Before | After |
+|---|--------|-------|
+| 1 | 14+ Make.com scenarios handing off through Google Sheets "Watch Rows" polling | One n8n main workflow (Scenarios 1–10) with an event router, plus four always-on workflows. See [ADR-004](decisions/ADR-004-n8n-orchestrator.md). |
+| 2 | Hand-offs waited for the next poll | Branches react to events (Gmail, webhooks) immediately; only the Exception Monitor polls, every 10 minutes. |
+| 3 | Tenant conversation stored in a Make data store | n8n AI Agent with Simple Memory keyed by `record_id`. |
+
 ## Kept exactly as designed
 
 The three-audience separation, the initial-estimate-first rule, updating the same estimate after assessment, the PM WO # traveling to the invoice, the approval timeline (20 min / 24 h / 48 h), technician continuity for repairs, payment follow-ups (15 / 30 / 45 days), and the AI coordinator and knowledge base layers.

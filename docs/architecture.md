@@ -19,7 +19,7 @@ flowchart TB
         BU[Buildium]
     end
 
-    subgraph Orchestration["Orchestration (Make.com or n8n)"]
+    subgraph Orchestration["n8n · main workflow + 4 always-on workflows"]
         S1[1 Intake] --> S2[2 Verify] --> S3[3 Estimate] --> S4[4 Tenant] --> S5[5 Dispatch] --> S6[6 Assess & decide]
         S6 --> S7[7 PM approval] --> S8[8 Schedule repair] --> S9[9 QA]
         S6 -->|within NTE| S9
@@ -40,13 +40,58 @@ flowchart TB
     classDef bg fill:#eef,stroke:#88a
 ```
 
+## Orchestration in n8n
+
+Decision record: [ADR-004](decisions/ADR-004-n8n-orchestrator.md).
+
+| Workflow | Triggers | Scenarios |
+|----------|----------|-----------|
+| `Maintenance Ops · Work Order Lifecycle` (main) | Gmail Trigger (new work orders), Webhook `POST /events/:event`, Gmail Trigger (approval replies) | 1–10 |
+| `Maintenance Ops · Exception Monitor` | Schedule Trigger every 10 min + daily 08:00 | 12 (and 7/10 follow-up timers) |
+| `Maintenance Ops · KPI Report` | Schedule Trigger daily 06:00, Monday 07:00 | 11 |
+| `Maintenance Ops · Coordinator` | Schedule Trigger + Slack Trigger | 13 |
+| `Maintenance Ops · SOP Assistant` | Chat Trigger | 14 |
+
+### Event router
+
+Everything that happens *after* intake arrives as an event on one webhook. The Switch node sends it to its branch; the branch loads the work order from Google Sheets, acts, and writes the new status back. No execution sits waiting for days, so every branch is short, easy to debug and safe to re-run.
+
+```mermaid
+flowchart LR
+    TW[Twilio inbound SMS / WhatsApp] -->|/events/sms| WH[Webhook<br/>POST /events/:event]
+    FORM[Assessment form] -->|/events/assessment_submitted| WH
+    HCP[Housecall Pro webhooks] -->|/events/pm_reply · job_completed · invoice_paid| WH
+    WA[WhatsApp dispatch buttons] -->|/events/dispatch_reply| WH
+    WH --> SW{Switch<br/>route by event}
+    SW -->|sms| LK[Look up active WO by phone] --> ST{Switch by status}
+    ST -->|awaiting confirmation| R2[tenant_reply · S04–05]
+    ST -->|awaiting sign-off| R6[tenant_signoff · S09–10]
+    SW -->|assessment_submitted| R3[S06 budget decision]
+    SW -->|pm_reply| R4[S07 approval → S08 / S10]
+    SW -->|job_completed| R5[S09 QA]
+    SW -->|dispatch_reply| R7[resume S05 offer]
+```
+
+| Event | Sent by | Branch |
+|-------|---------|--------|
+| `sms` | Twilio inbound webhook (tenant texts) | Resolved by work order status → `tenant_reply` or `tenant_signoff` |
+| `dispatch_reply` | WhatsApp quick-reply buttons | Resumes the waiting dispatch offer (Scenario 5) |
+| `assessment_submitted` | Technician assessment form | Scenario 6 |
+| `pm_reply` | Housecall Pro estimate approved / declined (email replies use a second Gmail Trigger into the same branch) | Scenario 7 |
+| `job_completed` | Housecall Pro job completed or the completion form | Scenario 9 |
+| `invoice_paid` | Housecall Pro invoice paid | Scenario 10 payment status |
+
+Short in-run waits (a technician accepting within 15 minutes, a reviewer clicking Approve) use a **Wait** node set to *On Webhook Call*. Anything measured in hours or days (approvals, tenant replies, payments) is handled by the Exception Monitor reading timestamps from the sheet.
+
+The rules engine (`python -m maintenance_ops.server`) is called with **HTTP Request** nodes (`/decide`, `/extraction`). Without it, the same formulas fit in **Code** nodes; keep them in sync with `config/business_rules.yaml`.
+
 ## Systems and their jobs
 
 | System | Role | System of record for |
 |--------|------|----------------------|
 | PM platforms | Source of work orders; receive status updates | PM Work Order #, NTE limit, PM-side status |
 | Gmail | Intake inbox, PM notifications | Original work order email |
-| Make.com / n8n | Orchestration, timers, routing | Scenario run history |
+| n8n | Orchestration: triggers, event routing, AI agents, retries | Execution history |
 | AI (OpenAI / Claude) | Extraction, classification, tenant conversation, QA review, narrative reports | Nothing (stateless) |
 | Rules engine | Pricing, NTE decision, status guard, visibility filters, SLA timers | Business rules (`config/`) |
 | Google Sheets | Operations database and dashboard source | Status, timestamps, next action, KPIs |
@@ -128,5 +173,5 @@ Implemented in [`visibility.py`](../src/maintenance_ops/visibility.py). Any outb
 
 - **Validate before write.** AI output is parsed against a JSON schema and validated before it reaches the database.
 - **Idempotency.** Scenario 1 checks for an existing `pm_work_order_number` + `pm_company_id` before creating a row, so a re-sent email does not create a duplicate job.
-- **Error routes.** Every Make.com module that calls an external API has an error handler that logs to the Exceptions sheet and alerts Operations; nothing fails silently.
+- **Error routes.** Every n8n node that calls an external API uses **On Error → Continue (using error output)**, wired to a node that logs to the Exceptions sheet and alerts Operations, and the workflows share an **Error Workflow**; nothing fails silently.
 - **Human in the loop.** Missing data, failed QA, declined estimates, and anything the AI is unsure about route to a person with a clear next action.

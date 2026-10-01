@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `13 - AI Operations Coordinator` |
-| **Trigger** | Every 5 minutes; daily 7:00 AM queue; daily 6:00 PM summary; chat messages |
+| **n8n workflow** | `Maintenance Ops · Coordinator` (separate workflow) |
+| **Trigger** | **Schedule Trigger** (every 5 min, 7:00 AM queue, 6:00 PM summary) and **Slack Trigger** (staff questions) |
 | **Systems** | Google Sheets, OpenAI / Claude, Slack / Teams / GHL, Gmail |
 | **Code** | `maintenance_ops.followups` (rules first), prompt [`05-operations-coordinator.md`](../../prompts/05-operations-coordinator.md) |
 
@@ -23,6 +23,17 @@ flowchart TD
     F -- yes --> G[Notify owner now]
     F -- no --> H[Add to daily queue]
 ```
+
+## n8n nodes
+
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Schedule Trigger** | Every 5 min; 07:00 queue; 18:00 summary. |
+| 2 | **Google Sheets → Get Row(s)** + **Code** | Active work orders and the rules engine's exceptions. |
+| 3 | **AI Agent** · Coordinator | Prompt [`prompts/05-operations-coordinator.md`](../../prompts/05-operations-coordinator.md); **Google Sheets Tool** (read-only) so it can look things up; **Structured Output Parser** for the action list. |
+| 4 | **Google Sheets → Update Row** | `next_action`, `next_action_owner`, `next_action_due`. |
+| 5 | **Slack → Send Message** | High-priority items now; queue and summary on schedule. |
+| 6 | **Slack Trigger** → same AI Agent | Staff questions in `#maintenance-ops`, answered from live sheet data. |
 
 ## Capabilities
 

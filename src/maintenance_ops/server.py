@@ -1,4 +1,4 @@
-"""Minimal HTTP wrapper so Make.com / n8n can call the rules engine.
+"""Minimal HTTP wrapper so n8n (HTTP Request nodes) can call the rules engine.
 
     python -m maintenance_ops.server --port 8080
 

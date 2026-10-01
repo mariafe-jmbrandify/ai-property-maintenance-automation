@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `06 - Assessment Pricing Decision` |
-| **Trigger** | Technician submits the assessment form (webhook), or HCP estimate visit marked complete |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → `assessment_submitted` branch (`S06`) |
+| **Trigger** | **Webhook** `POST /events/assessment_submitted` (technician form: n8n Form, Jotform or Typeform) |
 | **Exit status** | `Repair Completed` (same visit) or `Pending PM Approval` |
 | **Systems** | Form (HCP checklist, Jotform, or Typeform), HCP, Google Sheets, Google Drive |
 | **Rules** | PR-1 to PR-4, NTE-1 to NTE-4, EST-3, FEE-3 |
@@ -52,24 +52,29 @@ Schema: [`prompts/schemas/assessment.schema.json`](../../prompts/schemas/assessm
 | Materials (internal) | $45 |
 | Photos | Before, during |
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | **Webhooks → Custom webhook** | Receives the form submission |
-| 2 | **Filter / Router** | Required fields present (schema `required`) and ≥ 1 photo. Else → SMS technician with missing items; stop. |
-| 3 | Sheets → Search Rows | Work order by `estimate_id`; PM company for `default_nte_limit` |
-| 4 | **HTTP → Make a request** to the rules engine (`python -m maintenance_ops.server`) | `POST /decide` with `assessment_fee`, `labor`, `materials`, `nte_limit`, `pm_default_nte`. Returns `outcome`, `internal_total`, `client_price`, `over_by`, `next_status`. |
-| 5 | Sheets → Add a Row (`assessments`) | All costs (internal), `client_price`, `markup_pct` |
-| 6 | **Twilio / WhatsApp → technician** | "REPAIR NOW – within approved limit" or "STOP after assessment – approval needed". No dollar amounts. |
-| 7A | Within NTE: wait for completion report (same form, `repair_completed_onsite` = true), then HCP **update estimate → convert to job → mark complete** | — |
-| 7B | Over NTE: HCP **update estimate** (same ID): findings, recommendation, scope, photos, one line "{{trade}} repair" at `client_price`, disclaimer | — |
-| 8 | Sheets → Update a Row | `internal_cost_total`, `client_price`, `decision`, `status`, `first_visit_resolution` (Yes on 7A); append `status_history` |
-| 9 | Over NTE only: notify Operations | Estimate #, PM WO #, client price, NTE, amount over, recommendation |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Switch** · route by event | `assessment_submitted` output. |
+| 2 | **Code** · validate form | Check the schema's required fields and ≥ 1 photo. Missing → **WhatsApp** the technician what's missing and stop. |
+| 3 | **Google Sheets → Get Row(s)** | Work order by `estimate_id`; PM company for `default_nte_limit`. |
+| 4 | **HTTP Request** · `POST {{RULES_ENGINE_URL}}/decide` | Body: `assessment_fee`, `labor`, `materials`, `nte_limit`, `pm_default_nte`. Returns `outcome`, `internal_total`, `client_price`, `over_by`, `next_status`. Runs [`maintenance_ops.server`](../../src/maintenance_ops/server.py). |
+| 5 | **Google Sheets → Append Row** (`assessments`) | Internal costs, `client_price`, `markup_pct`. |
+| 6 | **IF** · ≤ NTE? | `outcome` = `WITHIN_LIMIT`. |
+| 7a | **WhatsApp → Send Message** | "REPAIR NOW – within approved limit." No amounts. Then **Google Sheets → Update Row**: status `Repair Completed`, `first_visit_resolution` = Yes. The technician's completion report later arrives on `/events/job_completed` (Scenario 9). |
+| 7b | **WhatsApp → Send Message** | "STOP after assessment – approval needed." |
+| 8b | **HTTP Request** · HCP update estimate (same ID) | Findings, recommendation, scope, photos, one line "{{trade}} repair" at `client_price`, the FEE-3 disclaimer. |
+| 9b | **Gmail → Send** · approval request | Scenario 7's package. Then **Google Sheets → Update Row**: status `Pending PM Approval`, `approval_requested_at` = now. |
 
-If you prefer not to host the rules engine, module 4 can be a Make **Tools → Set multiple variables** module:
-`internal_total = fee + labor + materials` · `client_price = ceil(internal_total * 1.35 / 5) * 5` · `within = client_price <= nte`.
-Keep the numbers in sync with `config/business_rules.yaml`.
+**No rules engine hosted?** Replace node 4 with a **Code** node:
+
+```js
+const t = $json.assessment_fee + $json.labor + $json.materials;
+const price = Math.ceil(t * 1.35 / 5) * 5;               // keep in sync with config/business_rules.yaml
+return [{ json: { ...$json, internal_total: t, client_price: price,
+  outcome: price <= $json.nte_limit ? 'WITHIN_LIMIT' : 'APPROVAL_REQUIRED' } }];
+```
 
 ## Worked examples
 

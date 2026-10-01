@@ -1,6 +1,6 @@
 # Prompt: Work Order Extraction (Scenario 1)
 
-**Used in:** Make.com → OpenAI "Create a Completion" or Anthropic Claude "Create a Message"
+**Used in:** n8n **AI Agent** node (Intake Agent) with an OpenAI or Anthropic Chat Model sub-node
 **Output:** JSON matching [`schemas/work_order.schema.json`](schemas/work_order.schema.json)
 **Recommended settings:** temperature 0, structured output / JSON mode on
 
@@ -25,18 +25,18 @@ Rules:
 - Put any mention of pets in "pet_notes".
 ```
 
-## User message (mapped in Make.com)
+## User message (n8n expression in the AI Agent's prompt field)
 
 ```text
-Subject: {{1.subject}}
-From: {{1.from.address}}
-Received: {{1.date}}
+Subject: {{ $('Gmail Trigger').item.json.subject }}
+From: {{ $('Gmail Trigger').item.json.from.value[0].address }}
+Received: {{ $('Gmail Trigger').item.json.date }}
 
-{{3.text}}   <- cleaned email body from the Text Parser module
+{{ $json.clean_text }}   <- cleaned body from the Code node
 ```
 
 ## Guardrails after the AI step
 
-1. Parse the JSON (Make: **JSON → Parse JSON** with the schema as the data structure).
+1. Attach a **Structured Output Parser** sub-node with the schema so the agent returns parsed JSON.
 2. Validate required fields. In code: `maintenance_ops.extraction.validate()`.
 3. If anything required is missing, write the row with status **Needs More Info** and alert Operations instead of continuing.

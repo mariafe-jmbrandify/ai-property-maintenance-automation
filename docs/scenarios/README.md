@@ -1,27 +1,27 @@
 # Scenario Index
 
-Build in order. Each scenario hands off to the next by writing a status that the next one watches.
+Scenarios are the business stages. In n8n, Scenarios 1–10 live in **one main workflow** (`Maintenance Ops · Work Order Lifecycle`): an intake branch plus an event router whose Switch sends each incoming event to its branch. Scenarios 11–14 are separate always-on workflows. See [n8n/README.md](../../n8n/README.md).
 
-| # | Scenario | Trigger status | Exit status | Code |
-|---|----------|----------------|-------------|------|
-| 1 | [Work Order Intake & AI Extraction](01-work-order-intake.md) | New email | New Work Order · Needs More Info | `extraction` |
-| 2 | [Tenant Verification & PM Company Linking](02-tenant-verification.md) | New Work Order | Customer Verified | — |
-| 3 | [Initial Assessment Estimate & Internal Review](03-initial-estimate.md) | Customer Verified | Awaiting Tenant Confirmation | `extraction.estimate_title` |
-| 4 | [Tenant Confirmation & Discovery](04-tenant-confirmation.md) | Awaiting Tenant Confirmation | Ready for Assessment Dispatch | — |
-| 5 | [Assessment Dispatch](05-assessment-dispatch.md) | Ready for Assessment Dispatch | Assessment Scheduled | `dispatch` |
-| 6 | [Assessment, Pricing & Budget Decision](06-assessment-budget-decision.md) | Assessment submitted | Repair Completed · Pending PM Approval | `pricing`, `visibility` |
-| 7 | [PM Approval & Owner Authorization](07-pm-approval.md) | Pending PM Approval | Repair Approved · Estimate Declined | `followups` |
-| 8 | [Repair Scheduling & Dispatch](08-repair-scheduling.md) | Repair Approved · Callback Required | Repair Scheduled | `dispatch` |
-| 9 | [Completion, QA & Tenant Sign-off](09-completion-qa.md) | Repair Completed | Ready for Invoice · Callback Required | — |
-| 10 | [Billing, Technician Pay & Reconciliation](10-billing-reconciliation.md) | Ready for Invoice | Invoiced → Closed | `billing` |
-| 11 | [KPI Dashboard & Management Reporting](11-kpi-dashboard.md) | Schedule · Closed | — | `kpis` |
-| 12 | [Exception Handling & Escalation](12-exception-handling.md) | Hourly · hold states | Hold → normal flow | `followups` |
-| 13 | [AI Operations Coordinator](13-ai-operations-coordinator.md) | Every 5 min | — | `followups` |
-| 14 | [AI Knowledge Base & SOP Assistant](14-ai-knowledge-base.md) | Questions | — | — |
+| # | Scenario | n8n workflow · starts on | Exit status | Code |
+|---|----------|--------------------------|-------------|------|
+| 1 | [Work Order Intake & AI Extraction](01-work-order-intake.md) | Main · **Gmail Trigger** | New Work Order · Needs More Info | `extraction` |
+| 2 | [Tenant Verification & PM Company Linking](02-tenant-verification.md) | Main · continues from S01 | Customer Verified | — |
+| 3 | [Initial Assessment Estimate & Internal Review](03-initial-estimate.md) | Main · continues from S02 | Awaiting Tenant Confirmation | `extraction.estimate_title` |
+| 4 | [Tenant Confirmation & Discovery](04-tenant-confirmation.md) | Main · end of intake; replies on `/events/sms` | Ready for Assessment Dispatch | — |
+| 5 | [Assessment Dispatch](05-assessment-dispatch.md) | Main · continues from S04 | Assessment Scheduled | `dispatch` |
+| 6 | [Assessment, Pricing & Budget Decision](06-assessment-budget-decision.md) | Main · `/events/assessment_submitted` | Repair Completed · Pending PM Approval | `pricing`, `visibility` |
+| 7 | [PM Approval & Owner Authorization](07-pm-approval.md) | Main · `/events/pm_reply` + Gmail Trigger | Repair Approved · Estimate Declined | `followups` |
+| 8 | [Repair Scheduling & Dispatch](08-repair-scheduling.md) | Main · after S07 approved or S09 callback | Repair Scheduled | `dispatch` |
+| 9 | [Completion, QA & Tenant Sign-off](09-completion-qa.md) | Main · `/events/job_completed`, `/events/sms` | Ready for Invoice · Callback Required | — |
+| 10 | [Billing, Technician Pay & Reconciliation](10-billing-reconciliation.md) | Main · after S09 fixed or S07 declined | Invoiced → Closed | `billing` |
+| 11 | [KPI Dashboard & Management Reporting](11-kpi-dashboard.md) | KPI Report · Schedule Trigger | — | `kpis` |
+| 12 | [Exception Handling & Escalation](12-exception-handling.md) | Exception Monitor · every 10 min | Hold → normal flow | `followups` |
+| 13 | [AI Operations Coordinator](13-ai-operations-coordinator.md) | Coordinator · Schedule + Slack Trigger | — | `followups` |
+| 14 | [AI Knowledge Base & SOP Assistant](14-ai-knowledge-base.md) | SOP Assistant · Chat Trigger | — | — |
 
 ## Every scenario spec contains
 
-Trigger and exit status · flow diagram · Make.com modules with configuration · data written · message templates · test checklist.
+Trigger and exit status · flow diagram · n8n nodes with configuration · data written · message templates · test checklist.
 
 ## Mapping from the original design
 

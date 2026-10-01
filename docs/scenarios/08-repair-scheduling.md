@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `08 - Repair Scheduling Dispatch` |
-| **Trigger** | Watch Rows, `status` = `Repair Approved` (also `Callback Required`) |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → `pm_reply` approved output and the `tenant_signoff` callback output (`S08`) |
+| **Trigger** | None of its own: continues from Scenario 7 (approved) or Scenario 9 (callback) |
 | **Exit status** | `Repair Scheduled` (or `Waiting Parts`, `Waiting Tenant Response`) |
 | **Systems** | Google Sheets, HCP, Twilio / WhatsApp, Gmail, PM platform |
 | **Rules** | DIS-2, DIS-3, DIS-4, tenant follow-up timers |
@@ -34,20 +34,19 @@ flowchart TD
     J --> O[Status: Repair Scheduled]
 ```
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Watch Rows + filter | `status` in `Repair Approved`, `Callback Required` |
-| 2 | Router: parts | If the assessment lists special-order parts → create task, `Waiting Parts` |
-| 3 | Router: availability | If `approval_received_at` − `assessment_submitted_at` > 48 h or no window left → SMS tenant |
-| 4 | Sheets → Search Rows (`technicians`) | Same as Scenario 5; `assessment_technician` ranked first if eligible |
-| 5 | HCP → Convert estimate to job; schedule; assign | Attach the approved estimate |
-| 6 | WhatsApp → technician | Repair dispatch package (no PM company, PM WO #, or money) |
-| 7 | Twilio → tenant | Template below |
-| 8 | Gmail → PM | Template below |
-| 9 | PM platform update | Appointment date/time and status |
-| 10 | Sheets → Update | `job_id`, `repair_technician`, `repair_scheduled_at`, `status`; append `status_history` |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **IF** · parts needed? | Special-order parts in the assessment → **Google Sheets → Append Row** to `exceptions` (`Waiting Parts`) and stop; the Exception Monitor re-triggers when parts arrive. |
+| 2 | **IF** · availability still valid? | Approval took > 48 h or no window left → **Twilio → Send SMS** asking for new availability; the reply comes back through `/events/sms`. |
+| 3 | **Google Sheets → Get Row(s)** (`technicians`) + **Code** · rank technicians | `preferred_technician` = `assessment_technician`. |
+| 4 | **HTTP Request** · HCP convert estimate to job + schedule | Attach the approved estimate; assign technician. |
+| 5 | **WhatsApp → Send Message** | Repair dispatch package (no PM company, PM WO #, or money). |
+| 6 | **Twilio → Send SMS** | Tenant appointment message. |
+| 7 | **Gmail → Send** | PM notice. |
+| 8 | PM platform update | API or Playwright sub-workflow. |
+| 9 | **Google Sheets → Update Row** | `job_id`, `repair_technician`, `repair_scheduled_at`, status `Repair Scheduled`; append history. |
 
 ## Messages
 

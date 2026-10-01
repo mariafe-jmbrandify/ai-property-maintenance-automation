@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `10 - Billing Reconciliation` |
-| **Trigger** | Watch Rows, `status` = `Ready for Invoice` |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → `tenant_signoff` fixed output and the `pm_reply` declined output (`S10`) |
+| **Trigger** | None of its own: continues from Scenario 9 (fixed) or Scenario 7 (declined). Payment follow-ups run in the Exception Monitor. |
 | **Exit status** | `Invoiced` → `Closed` (payment tracked separately in `financials.payment_status`) |
 | **Systems** | HCP invoices, Google Sheets, Gmail |
 | **Rules** | FEE-1, FEE-2, payment follow-up timers |
@@ -39,19 +39,18 @@ flowchart TD
 
 Internal record for the default case: client $325 − internal cost $240 = **gross profit $85 (26.2%)**.
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Watch Rows + filter | `status` = `Ready for Invoice` |
-| 2 | Router | Approved / same-visit vs. declined |
-| 3 | HCP → Create invoice from job (or estimate for declined) | Title includes PM WO #; lines per table above |
-| 4 | Gmail → PM `billing_email` | Invoice PDF, completion report, photos, PM WO # in subject |
-| 5 | Sheets → Add a Row (`financials`) | `invoice_total`, `assessment_credit_applied`, `technician_cost`, `gross_profit`, `gross_margin_pct`, `payment_status` = Sent |
-| 6 | Sheets → Update work order | `invoice_id`, `status` = `Invoiced`, then `Closed`, `closed_at` |
-| 7 | Gmail / Slack → Accounting | "New invoice {{invoice_id}} · {{pm_company_name}} · ${{invoice_total}}" |
-| 8 | **Scheduled scenario `10b`** (daily 8 AM) | For unpaid invoices: `payment_follow_up(sent_on, today)` → 15 d reminder to PM, 30 d escalate to Accounting, 45 d flag Collections Review |
-| 9 | HCP webhook "invoice paid" | `payment_status` = Paid, `paid_at` |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **IF** · approved repair? | Approved / same-visit vs. declined. |
+| 2 | **HTTP Request** · HCP create invoice | From the job (or the estimate when declined). Title includes PM WO #; lines per the table above. |
+| 3 | **Gmail → Send** · PM completion package | To `billing_email`: invoice PDF, completion report, photos, PM WO # in the subject. |
+| 4 | **HTTP Request** · `POST {{RULES_ENGINE_URL}}/decide` (optional) or **Code** | Profit = invoice total − internal cost; margin %. |
+| 5 | **Google Sheets → Append Row** (`financials`) | `invoice_total`, `assessment_credit_applied`, `technician_cost`, `gross_profit`, `gross_margin_pct`, `payment_status` = Sent. |
+| 6 | **Google Sheets → Update Row** (`work_orders`) | `invoice_id`, status `Invoiced`, then `Closed`, `closed_at`. |
+| 7 | **Slack → Send Message** | Accounting: "New invoice {{invoice_id}} · {{pm_company_name}} · ${{invoice_total}}". |
+| 8 | Payment follow-ups | Exception Monitor (daily part): 15 d reminder, 30 d escalate, 45 d collections review. HCP "invoice paid" webhook → `/events/invoice_paid` → **Google Sheets → Update Row** `payment_status` = Paid. |
 
 ## Test checklist
 

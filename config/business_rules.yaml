@@ -1,5 +1,5 @@
 # Business rules for the maintenance operations platform.
-# Every automation (Make.com / n8n scenario) and the Python reference
+# Every automation (n8n workflow) and the Python reference
 # implementation read the same values, so change them here, not in a scenario.
 
 pricing:

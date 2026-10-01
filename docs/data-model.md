@@ -4,7 +4,7 @@ Workbook name: **AI Maintenance Operations Database**. Import each CSV in [`data
 
 Conventions:
 
-- `snake_case` headers so Make.com and n8n map fields reliably.
+- `snake_case` headers so n8n expressions (`{{ $json.status }}`) map fields reliably.
 - Timestamps in `YYYY-MM-DD HH:MM`, in the company's local time zone.
 - Money as plain numbers (`325`, not `$325.00`).
 - Columns marked **INTERNAL** must never be mapped into PM- or technician-facing messages.

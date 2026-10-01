@@ -1,12 +1,12 @@
-# AI-Powered Property Maintenance Operations Platform
-
 ![GitHub social preview banner](assets/github-social-preview.png)
+
+# AI-Powered Property Maintenance Operations Platform
 
 > End-to-end automation for a maintenance vendor that serves property management companies: from the moment a work order email arrives to the invoice, the KPI dashboard, and the exceptions in between.
 
 [![CI](https://github.com/mariafe-jmbrandify/ai-property-maintenance-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/mariafe-jmbrandify/ai-property-maintenance-automation/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Make.com](https://img.shields.io/badge/orchestration-Make.com%20%7C%20n8n-6d00cc)
+![n8n](https://img.shields.io/badge/orchestration-n8n-EA4B71)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ```
@@ -23,24 +23,24 @@ Maintenance vendors that work for property managers juggle four systems and thre
 - **Tenants, property managers, and technicians** each need different information, and the PM must never see internal labor, material, or margin numbers.
 - Approvals stall, tenants don't answer, parts are back-ordered, and nobody owns the next step.
 
-This project designs the whole operation as 14 connected automation scenarios, with a tested rules engine for the parts that must never be left to an AI's judgment: pricing, approvals, status changes, and data visibility.
+This project designs the whole operation as 14 connected automation scenarios orchestrated in **n8n**, with a tested rules engine for the parts that must never be left to an AI's judgment: pricing, approvals, status changes, and data visibility.
 
 ## What's in this repo
 
 | Path | What it is |
 |------|-----------|
 | [`docs/architecture.md`](docs/architecture.md) | System diagram, integrations, status lifecycle, and audience views |
-| [`docs/scenarios/`](docs/scenarios/README.md) | 14 scenario specs: trigger, modules, data writes, messages, test checklist |
+| [`docs/scenarios/`](docs/scenarios/README.md) | 14 scenario specs: trigger, n8n nodes, data writes, messages, test checklist |
 | [`docs/business-rules.md`](docs/business-rules.md) | Every rule in one place: pricing, NTE decision, follow-ups, SLAs |
 | [`docs/data-model.md`](docs/data-model.md) | Google Sheets operations database: 12 sheets, every column |
 | [`docs/decisions/`](docs/decisions) | Architecture decision records (why it works this way) |
 | [`docs/design-review.md`](docs/design-review.md) | What changed from the original design and why |
 | [`prompts/`](prompts/README.md) | Production AI prompts and JSON schemas |
 | [`config/`](config) | Business rules and the status lifecycle as YAML (single source of truth) |
-| [`src/maintenance_ops/`](src/maintenance_ops) | Python rules engine, CLI demo, and a small HTTP API that Make.com calls |
+| [`src/maintenance_ops/`](src/maintenance_ops) | Python rules engine, CLI demo, and a small HTTP API that n8n calls |
 | [`tests/`](tests) | 40 unit tests covering pricing, approvals, visibility, dispatch, SLAs, KPIs |
 | [`data/sheets/`](data/sheets) | CSV templates for each Google Sheet, with synthetic sample rows |
-| [`make/`](make/README.md) | Naming and export conventions for Make.com scenario blueprints |
+| [`n8n/`](n8n/README.md) | Workflow list, credentials, webhook events, export and import conventions |
 
 ## Architecture at a glance
 
@@ -50,7 +50,7 @@ flowchart LR
         AF[AppFolio] & PMe[Property Meld] & RV[Rentvine] & BU[Buildium]
     end
     PM -->|work order email| GM[Gmail inbox]
-    GM --> MK{{Make.com / n8n<br/>14 scenarios}}
+    GM --> MK{{n8n<br/>main workflow + 4 always-on}}
     MK <--> AI[AI layer<br/>OpenAI / Claude]
     MK <--> RE[Rules engine<br/>pricing · NTE · status · visibility]
     MK <--> GS[(Google Sheets<br/>operations database)]
@@ -61,9 +61,24 @@ flowchart LR
     MK -->|email + portal update| PMC((Property manager))
 ```
 
+### The whole system on one n8n canvas
+
+![Full n8n system canvas](docs/images/n8n-system-canvas.png)
+
+One **main workflow** runs Scenarios 1–10. A Gmail Trigger starts intake; after that, every reply, form and Housecall Pro update arrives at one **Webhook** (`POST /events/:event`) and a **Switch** sends it to its branch. Google Sheets holds each work order's status, so no execution has to wait days for a person. Four smaller workflows run the always-on jobs (exceptions every 10 minutes, KPI reports, the AI coordinator, the SOP assistant). Details: [architecture](docs/architecture.md#orchestration-in-n8n) and [ADR-004](docs/decisions/ADR-004-n8n-orchestrator.md).
+
+<details>
+<summary>Lane view: one work order from start to finish</summary>
+
+![End-to-end lane view](docs/images/n8n-end-to-end.png)
+
+</details>
+
 **AI interprets, rules decide.** The AI reads emails, classifies trades, talks to tenants, checks completed work against scope, and writes reports. Prices, approval routing, and status changes come from deterministic rules in [`config/business_rules.yaml`](config/business_rules.yaml), implemented and tested in [`src/maintenance_ops`](src/maintenance_ops).
 
 ## The 14 scenarios
+
+Scenarios 1–10 are branches of the main n8n workflow; 11–14 are separate workflows. Each spec lists its n8n nodes.
 
 | # | Scenario | Ends in status |
 |---|----------|----------------|
@@ -125,15 +140,16 @@ python -m maintenance_ops.server --port 8080  # HTTP API used by Scenarios 1 and
 To build the automation itself:
 
 1. Create a Google Sheet named **AI Maintenance Operations Database** and import each CSV from [`data/sheets/`](data/sheets) as its own tab.
-2. Copy `.env.example` to `.env` and collect the credentials it lists, then add them as Make.com connections.
-3. Build the scenarios in order, starting with [Scenario 1](docs/scenarios/01-work-order-intake.md). Each spec ends with a test checklist; don't start the next scenario until it passes.
+2. Use n8n Cloud or a self-hosted n8n with a public HTTPS URL, and create the credentials listed in [`n8n/README.md`](n8n/README.md#credentials-to-create-in-n8n). `.env.example` is the checklist.
+3. Deploy the rules engine (`python -m maintenance_ops.server`) somewhere n8n can reach, or use the Code-node fallback in [Scenario 6](docs/scenarios/06-assessment-budget-decision.md).
+4. Build the main workflow branch by branch, starting with [Scenario 1](docs/scenarios/01-work-order-intake.md). Each spec ends with a test checklist; don't start the next branch until it passes. Then add the four always-on workflows.
 
 ## Tech stack
 
 | Layer | Tools |
 |-------|-------|
 | Work order sources | AppFolio, Property Meld, Rentvine, Buildium |
-| Orchestration | Make.com (primary), n8n (alternative) |
+| Orchestration | n8n (Cloud or self-hosted): AI Agent, Text Classifier, Webhook event router, Schedule triggers |
 | AI | OpenAI or Anthropic Claude, structured JSON output |
 | Field service CRM | Housecall Pro (customers, estimates, jobs, invoices) |
 | Operations database | Google Sheets |
@@ -151,7 +167,8 @@ To build the automation itself:
 | Rules engine + tests | ✅ Complete |
 | Google Sheets templates | ✅ Complete (synthetic data) |
 | AI prompts + schemas | ✅ Complete |
-| Make.com blueprint exports | 🔜 Added to `make/blueprints/` as each scenario is built and tested |
+| Architecture visuals | ✅ [`docs/images/`](docs/images) |
+| n8n workflow exports | 🔜 Added to [`n8n/workflows/`](n8n/workflows) as each workflow is built and tested |
 
 ## Data and privacy
 

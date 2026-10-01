@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `03 - Initial Assessment Estimate` |
-| **Trigger** | Watch Rows, `status` = `Customer Verified` |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → intake branch (`S03`) |
+| **Trigger** | None of its own: continues from Scenario 2 |
 | **Exit status** | `Awaiting Tenant Confirmation` (or `Needs More Info` if the reviewer holds it) |
 | **Systems** | Google Sheets, Housecall Pro, Gmail / Slack |
 | **Rules** | EST-1, EST-2, EST-4 |
@@ -16,7 +16,7 @@ Create the **Initial Assessment Estimate** in Housecall Pro for every verified w
 
 ```mermaid
 flowchart TD
-    A[Watch Rows: Customer Verified] --> B[Get work order + PM company]
+    A[From Scenario 2: Customer Verified] --> B[Get work order + PM company]
     B --> C[Build estimate title]
     C --> D[HCP: create estimate<br/>Initial Assessment]
     D --> E[Attach photos + work order details]
@@ -29,18 +29,18 @@ flowchart TD
     J -- needs info --> K[Status: Needs More Info]
 ```
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | **Watch Rows** + filter | `status` = `Customer Verified` |
-| 2 | **Tools → Set Variable** | `estimate_title` = `{{pm_work_order_number}} - {{trade or "General Maintenance"}} Assessment - {{property_address}}` |
-| 3 | **HCP → Create estimate** | Customer: `hcp_customer_id`. Address. Title from module 2. Line item: "Initial assessment" at $0 (pricing comes later). Notes: issue description, entry instructions, PM WO #, NTE. |
-| 4 | **HCP → Upload attachment** | Photos from the Drive folder. |
-| 5 | **Sheets → Add a Row** (`estimates`) | `estimate_type` = `Initial Assessment`, `status` = `Created`. |
-| 6 | **Router: internal review** | Review required when priority = Emergency, NTE missing, or issue description under 15 characters. Otherwise skip. |
-| 7 | **Slack / Gmail → Send** | Review card with **Approve** and **Needs info** links (Make webhooks). |
-| 8 | **Sheets → Update a Row** | `estimate_id`, `estimate_title`, `status`, `next_action`. Append to `status_history`. |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Edit Fields (Set)** · estimate title | `estimate_title` = `{{pm_work_order_number}} - {{trade || "General Maintenance"}} Assessment - {{property_address}}` |
+| 2 | **HTTP Request** · HCP create estimate | Customer `hcp_customer_id`, address, title, one line item "Initial assessment" at $0, notes with issue, entry instructions, PM WO #, NTE. |
+| 3 | **HTTP Request** · HCP attach photos | One request per photo (n8n runs once per item automatically). |
+| 4 | **Google Sheets → Append Row** (`estimates`) | `estimate_type` = `Initial Assessment`, `status` = `Created`. |
+| 5 | **IF** · internal review needed? | True when priority = Emergency, NTE missing, or the issue description is under 15 characters. |
+| 6 | **Slack → Send Message** (or Gmail) + **Wait** · On Webhook Call | Review card with **Approve** / **Needs info** links that resume the execution (the Wait node's `$execution.resumeUrl` with `?decision=approve`). Timeout 4 h → treat as approved and log it. |
+| 7 | **Google Sheets → Update Row** | `estimate_id`, `estimate_title`, `status` = `Awaiting Tenant Confirmation` (or `Needs More Info`); append history. |
+| 8 | → continues | Into Scenario 4's outbound message. |
 
 ## Internal review checklist (for the reviewer)
 

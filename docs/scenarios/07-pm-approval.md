@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Make.com name** | `07 - PM Approval Workflow` |
-| **Trigger** | Watch Rows, `status` = `Pending PM Approval` |
+| **n8n workflow** | `Maintenance Ops · Work Order Lifecycle` → request sent at the end of Scenario 6; replies in the `pm_reply` branch (`S07`) |
+| **Trigger** | **Webhook** `POST /events/pm_reply` (Housecall Pro estimate approved / declined) and a second **Gmail Trigger** for emailed replies |
 | **Exit status** | `Repair Approved` or `Estimate Declined` (via `Awaiting Owner Approval` / `Approval Delayed`) |
 | **Systems** | Gmail, HCP estimate approval link, Google Sheets, PM platform |
 | **Rules** | Follow-up timers (PM approval, owner approval), FEE-2 |
@@ -58,18 +58,22 @@ If approved, the assessment fee is credited toward the repair. If declined, only
 assessment fee of ${{assessment_fee_client_price}} will be invoiced.
 ```
 
-## Modules
+## n8n nodes
 
-| # | Module | Configuration |
-|---|--------|---------------|
-| 1 | Watch Rows + filter | `status` = `Pending PM Approval` and `approval_requested_at` empty |
-| 2 | Gmail → Send | Package above; PDF of the HCP estimate attached |
-| 3 | Sheets → Update | `approval_requested_at` = now, `next_action` = `Await PM approval`, `next_action_due` = now + 20 min |
-| 4 | **Approval intake** (separate scenario `07b`) | Triggers: HCP webhook "estimate approved/declined" **or** Gmail Watch Emails on replies with subject `Approval needed – {{pm_work_order_number}}`. AI classifies the reply as `approved`, `declined`, `owner_approval_needed`, or `question`. |
-| 5 | Router | One route per outcome (flow above) |
-| 6 | Sheets → Update | `approval_received_at`, `approved_by`, status; append `status_history` and `communication_log` |
-| 7 | PM platform update | Approved / declined status and note (API or browser automation) |
-| 8 | **Follow-up scenario** `07c` (scheduled every 10 min) | For each `Pending PM Approval` / `Awaiting Owner Approval` row, call `approval_follow_up(approval_requested_at, now)` and send the step that is due, once. Step 3 sets `Approval Delayed` and creates an exception. |
+| # | Node | Configuration |
+|---|------|---------------|
+| 1 | **Webhook** → **Switch** (`pm_reply`) | Housecall Pro estimate webhook. |
+| 1b | **Gmail Trigger** · approval replies | Query `subject:"Approval needed –"`. Connects into node 2 of the same branch (n8n allows several triggers in one workflow). |
+| 2 | **Google Sheets → Get Row(s)** | By `estimate_id` or the PM WO # in the subject. |
+| 3 | **Text Classifier** | Categories `approved`, `declined`, `owner_approval_needed`, `question` (skipped for HCP webhooks, which already carry the decision). |
+| 4 | **Switch** · decision | One output per category. |
+| 5 | approved → **Google Sheets → Update Row** | `approval_received_at`, `approved_by`, status `Repair Approved` → continues into Scenario 8. |
+| 6 | declined → **HTTP Request** · HCP assessment-only invoice → **Google Sheets → Update Row** | Status `Estimate Declined` → `Ready for Invoice` (Scenario 10 billing path). |
+| 7 | owner_approval_needed → **Google Sheets → Update Row** | Status `Awaiting Owner Approval`; timers keep running. |
+| 8 | question → **Slack → Send Message** | Operations answers the PM. |
+| 9 | PM platform update | API or the Playwright sub-workflow. |
+
+**Follow-up timers** run in the separate **Exception Monitor** workflow (Scenario 12), which checks `approval_requested_at` every 10 minutes and sends the step that is due exactly once (it records each step in `communication_log`).
 
 ## Follow-up messages
 
